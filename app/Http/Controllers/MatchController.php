@@ -2,41 +2,79 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\MatchFixture;
+use Illuminate\Http\Request;
 
 class MatchController extends Controller
 {
-    // Homepage
     public function index()
     {
-        $match = MatchFixture::latest()->first();
-        return view('welcome', compact('match'));
+        $currentMatches = MatchFixture::where('status', 'current')
+            ->orderByDesc('kickoff_at')
+            ->limit(2)
+            ->get();
+
+        $upcomingFixtures = MatchFixture::where('status', 'upcoming')
+            ->orderBy('kickoff_at')
+            ->limit(8)
+            ->get();
+
+        return view('welcome', compact('currentMatches', 'upcomingFixtures'));
     }
 
-    // Admin panel
     public function admin()
     {
-        $match = MatchFixture::latest()->first();
-        return view('admin.match', compact('match'));
+        $matches = MatchFixture::orderByDesc('kickoff_at')->get();
+        return view('admin.match', compact('matches'));
     }
 
-    // Update match
     public function update(Request $request)
     {
-        $match = MatchFixture::first();
+        $request->validate([
+            'id' => 'required|integer',
+            'team1' => 'required|string',
+            'team2' => 'required|string',
+            'score1' => 'nullable|integer',
+            'score2' => 'nullable|integer',
+            'match_time' => 'nullable|string',
+            'status' => 'required|in:current,upcoming,finished',
+            'kickoff_at' => 'nullable|date',
+        ]);
 
-        if (!$match) {
-            $match = new MatchFixture();
-        }
+        $match = MatchFixture::findOrFail($request->id);
 
-        $match->team1 = $request->team1;
-        $match->team2 = $request->team2;
-        $match->score1 = $request->score1;
-        $match->score2 = $request->score2;
-        $match->match_time = $request->match_time;
-        $match->save();
+        $match->update([
+            'team1' => $request->team1,
+            'team2' => $request->team2,
+            'score1' => $request->score1 ?? 0,
+            'score2' => $request->score2 ?? 0,
+            'match_time' => $request->match_time ?? '',
+            'status' => $request->status,
+            'kickoff_at' => $request->kickoff_at,
+        ]);
 
-        return redirect()->back()->with('success', 'Match updated!');
+        return back()->with('success', 'Match updated successfully!');
+    }
+
+    public function create(Request $request)
+    {
+        $request->validate([
+            'team1' => 'required|string',
+            'team2' => 'required|string',
+            'status' => 'required|in:current,upcoming,finished',
+            'kickoff_at' => 'nullable|date',
+        ]);
+
+        MatchFixture::create([
+            'team1' => $request->team1,
+            'team2' => $request->team2,
+            'score1' => 0,
+            'score2' => 0,
+            'match_time' => '',
+            'status' => $request->status,
+            'kickoff_at' => $request->kickoff_at,
+        ]);
+
+        return back()->with('success', 'Match created!');
     }
 }
