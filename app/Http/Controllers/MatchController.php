@@ -18,8 +18,12 @@ class MatchController extends Controller
             ->orderBy('kickoff_at')
             ->limit(8)
             ->get();
+        $finishedMatches = MatchFixture::where('status', 'finished')
+           ->orderByDesc('kickoff_at')
+          ->limit(6)
+          ->get();    
 
-        return view('welcome', compact('currentMatches', 'upcomingFixtures'));
+        return view('welcome', compact('currentMatches', 'finishedMatches', 'upcomingFixtures'));
     }
 
     public function admin()
