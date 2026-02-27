@@ -13,7 +13,6 @@
     background-size:cover;
 }
 
-
         .overlay{
             background:rgba(0,0,0,0.75);
             min-height:100vh;
@@ -118,16 +117,16 @@
                 <div class="row">
                     <h2 style="margin:0;">Current Matches</h2>
                     <span class="badge">
-                        {{ isset($currentMatches) ? $currentMatches->count() : 0 }}
+                        {{ ($currentMatches ?? collect())->count() }}
                     </span>
                 </div>
 
-                @if(isset($currentMatches) && $currentMatches->count())
+                @if(($currentMatches ?? collect())->count())
                     @foreach($currentMatches as $match)
                         <div class="card">
                             <div class="muted">Kickoff: {{ $match->kickoff_at ?? 'N/A' }}</div>
-                            <div class="teams">{{ $match->team1 }} vs {{ $match->team2 }}</div>
-                            <div class="score">{{ $match->score1 }} - {{ $match->score2 }}</div>
+                            <div class="teams">{{ $match->team1 ?? 'N/A' }} vs {{ $match->team2 ?? 'N/A' }}</div>
+                            <div class="score">{{ $match->score1 ?? 0 }} - {{ $match->score2 ?? 0 }}</div>
                             <div class="muted">Time: {{ $match->match_time ?? 'N/A' }}</div>
                         </div>
                     @endforeach
@@ -143,7 +142,7 @@
                     <span class="badge">Next</span>
                 </div>
 
-                @if(isset($upcomingFixtures) && $upcomingFixtures->count())
+                @if(($upcomingFixtures ?? collect())->count())
                     <table>
                         <thead>
                         <tr>
@@ -156,8 +155,8 @@
                         @foreach($upcomingFixtures as $fx)
                             <tr>
                                 <td>{{ $fx->kickoff_at ?? 'N/A' }}</td>
-                                <td>{{ $fx->team1 }} vs {{ $fx->team2 }}</td>
-                                <td><span class="badge">{{ $fx->status }}</span></td>
+                                <td>{{ $fx->team1 ?? 'N/A' }} vs {{ $fx->team2 ?? 'N/A' }}</td>
+                                <td><span class="badge">{{ $fx->status ?? 'N/A' }}</span></td>
                             </tr>
                         @endforeach
                         </tbody>
@@ -170,63 +169,63 @@
         </div>
 
         <!-- ROW 2: Finished Results -->
-<div class="bottom-row">
-    <div class="finished">
-        <div class="row">
-            <h2 style="margin:0;">Finished Results</h2>
-            <span class="badge">Latest</span>
+        <div class="bottom-row">
+            <div class="finished">
+                <div class="row">
+                    <h2 style="margin:0;">Finished Results</h2>
+                    <span class="badge">Latest</span>
+                </div>
+
+                @if(($finishedMatches ?? collect())->count())
+                    <div class="finished-grid">
+
+                        @foreach($finishedMatches as $index => $m)
+                            <div class="card finished-item"
+                                 style="{{ $index >= 3 ? 'display:none;' : '' }}">
+                                <div class="muted">Played: {{ $m->kickoff_at ?? 'N/A' }}</div>
+                                <div class="teams">{{ $m->team1 ?? 'N/A' }} vs {{ $m->team2 ?? 'N/A' }}</div>
+                                <div class="score">{{ $m->score1 ?? 0 }} - {{ $m->score2 ?? 0 }}</div>
+                            </div>
+                        @endforeach
+
+                    </div>
+
+                    @if(($finishedMatches ?? collect())->count() > 3)
+                        <div style="text-align:center; margin-top:15px;">
+                            <button id="seeMoreBtn"
+                                style="padding:10px 18px; border-radius:8px; border:none; cursor:pointer;">
+                                See More
+                            </button>
+                        </div>
+                    @endif
+
+                @else
+                    <p>No finished results yet.</p>
+                @endif
+            </div>
         </div>
 
-        @if(isset($finishedMatches) && $finishedMatches->count())
-            <div class="finished-grid">
+        <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const btn = document.getElementById("seeMoreBtn");
+            if (!btn) return;
 
-                @foreach($finishedMatches as $index => $m)
-                    <div class="card finished-item"
-                         style="{{ $index >= 3 ? 'display:none;' : '' }}">
-                        <div class="muted">Played: {{ $m->kickoff_at ?? 'N/A' }}</div>
-                        <div class="teams">{{ $m->team1 }} vs {{ $m->team2 }}</div>
-                        <div class="score">{{ $m->score1 }} - {{ $m->score2 }}</div>
-                    </div>
-                @endforeach
+            let expanded = false;
 
-            </div>
+            btn.addEventListener("click", function () {
+                const hiddenItems = document.querySelectorAll(".finished-item");
 
-            @if($finishedMatches->count() > 3)
-                <div style="text-align:center; margin-top:15px;">
-                    <button id="seeMoreBtn"
-                        style="padding:10px 18px; border-radius:8px; border:none; cursor:pointer;">
-                        See More
-                    </button>
-                </div>
-            @endif
+                hiddenItems.forEach((item, index) => {
+                    if (index >= 3) {
+                        item.style.display = expanded ? "none" : "block";
+                    }
+                });
 
-        @else
-            <p>No finished results yet.</p>
-        @endif
-    </div>
-</div>
-
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-    const btn = document.getElementById("seeMoreBtn");
-    if (!btn) return;
-
-    let expanded = false;
-
-    btn.addEventListener("click", function () {
-        const hiddenItems = document.querySelectorAll(".finished-item");
-
-        hiddenItems.forEach((item, index) => {
-            if (index >= 3) {
-                item.style.display = expanded ? "none" : "block";
-            }
+                btn.textContent = expanded ? "See More" : "See Less";
+                expanded = !expanded;
+            });
         });
-
-        btn.textContent = expanded ? "See More" : "See Less";
-        expanded = !expanded;
-    });
-});
-</script>
+        </script>
 
     </div>
 </div>
