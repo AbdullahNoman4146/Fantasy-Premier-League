@@ -13,6 +13,17 @@
         .error{ color:#b00020; }
         .error-box{ border:1px solid #f2b8c6; background:#fff0f3; padding:10px; border-radius:10px; margin:12px 0; }
         .hint{ font-size:12px; opacity:.75; margin-top:-6px; margin-bottom:10px; }
+
+        table{ width:100%; border-collapse:collapse; margin-top:10px; }
+        th,td{ padding:10px; border-bottom:1px solid #eee; text-align:left; }
+        th{ font-weight:800; font-size:14px; }
+        .badge{
+            display:inline-block;
+            padding:4px 10px;
+            border-radius:999px;
+            border:1px solid #ddd;
+            font-size:12px;
+        }
     </style>
 </head>
 <body>
@@ -33,6 +44,21 @@
         </ul>
     </div>
 @endif
+
+@php
+    // Fallback sponsor list (in case controller did not pass $sponsorOptions)
+    $defaultSponsorOptions = [
+        'Puma','Nike','Spotify','Adidas',
+        'Emirates','Etihad Airways','Qatar Airways',
+        'Rakuten','AIA','Standard Chartered',
+        'Three','Vodafone','Chevrolet',
+        'New Balance','Umbro','Castore'
+    ];
+
+    $finalSponsorOptions = (isset($sponsorOptions) && is_array($sponsorOptions) && count($sponsorOptions))
+        ? $sponsorOptions
+        : $defaultSponsorOptions;
+@endphp
 
 
 {{-- -------------------- ADD TEAM -------------------- --}}
@@ -57,6 +83,66 @@
 
     <button type="submit">Add Team</button>
 </form>
+
+<hr>
+
+
+{{-- -------------------- SPONSOR ADMIN -------------------- --}}
+<h2>Sponsor Admin</h2>
+<p class="hint">Assign a sponsor to a team using dropdowns (no typing).</p>
+
+@if(($teams ?? collect())->count() == 0)
+    <p class="error"><b>No teams found.</b> Add teams first, then assign sponsors.</p>
+@else
+<form method="POST" action="{{ route('admin.sponsors.create') }}">
+    @csrf
+
+    <!-- ✅ so controller redirects back to THIS admin page -->
+    <input type="hidden" name="redirect_to" value="{{ url()->current() }}">
+
+    <label>Select Sponsor</label>
+    <select name="sponsor_name" required>
+        <option value="" disabled {{ old('sponsor_name') ? '' : 'selected' }}>Select sponsor</option>
+        @foreach($finalSponsorOptions as $opt)
+            <option value="{{ $opt }}" @selected(old('sponsor_name') === $opt)>{{ $opt }}</option>
+        @endforeach
+    </select>
+
+    <label>Select Team</label>
+    <select name="team_id" required>
+        <option value="" disabled {{ old('team_id') ? '' : 'selected' }}>Select team</option>
+        @foreach(($teams ?? collect()) as $t)
+            <option value="{{ $t->team_id }}" @selected((string)old('team_id') === (string)$t->team_id)>
+                {{ $t->team_name ?? ('Team '.$t->team_id) }} (ID: {{ $t->team_id }})
+            </option>
+        @endforeach
+    </select>
+
+    <button type="submit">Assign Sponsor</button>
+</form>
+@endif
+
+@if(($sponsors ?? collect())->count())
+    <h3 style="margin-top:18px;">Current Sponsor Assignments</h3>
+    <table>
+        <thead>
+            <tr style="background:#f7f7f7;">
+                <th>Sponsor ID</th>
+                <th>Sponsor Name</th>
+                <th>Team Name</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($sponsors as $s)
+                <tr>
+                    <td><span class="badge">{{ $s->sponsor_id }}</span></td>
+                    <td>{{ $s->sponsor_name ?? 'N/A' }}</td>
+                    <td>{{ $s->team_name ?? 'N/A' }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+@endif
 
 <hr>
 
@@ -123,8 +209,6 @@
         <select name="team1" required>
             @foreach(($teams ?? collect()) as $t)
                 @php
-                    // Preselect works if match->team1 stores team_id.
-                    // Fallback: also tries to match by team_name if your old data stored names.
                     $isSelected =
                         ((string)($match->team1 ?? '') === (string)$t->team_id) ||
                         ((string)($match->team1 ?? '') === (string)($t->team_name ?? ''));
