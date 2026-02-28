@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head> 
     <meta charset="UTF-8">
     <title>Fantasy Premier League</title>
 
@@ -297,7 +297,7 @@
             <a href="#">Results</a>
             <a href="#">Standings</a>
             <a href="#">Players</a>
-            <a href="#">Sponsors</a>
+            <a href="{{ url('/sponsors') }}">Sponsors</a>
             <a href="#">Market Values</a>
             <a href="#">Managers</a>
             <a href="#">Transfer</a>
@@ -330,7 +330,7 @@
                 <a href="#">Results</a>
                 <a href="#">Standings</a>
                 <a href="#">Players</a>
-                <a href="#">Sponsors</a>
+                <a href="{{ url('/sponsors') }}">Sponsors</a>
                 <a href="#">Market Values</a>
                 <a href="#">Managers</a>
                 <a href="#">Transfer</a>
