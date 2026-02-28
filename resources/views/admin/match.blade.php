@@ -12,6 +12,7 @@
         .success{ color:green; }
         .error{ color:#b00020; }
         .error-box{ border:1px solid #f2b8c6; background:#fff0f3; padding:10px; border-radius:10px; margin:12px 0; }
+        .hint{ font-size:12px; opacity:.75; margin-top:-6px; margin-bottom:10px; }
     </style>
 </head>
 <body>
@@ -33,15 +34,63 @@
     </div>
 @endif
 
+
+{{-- -------------------- ADD TEAM -------------------- --}}
+<h2>Add New Team</h2>
+<form method="POST" action="{{ route('admin.team.create') }}">
+    @csrf
+
+    <label>Team Name</label>
+    <input type="text" name="team_name" placeholder="e.g. Manchester United" required>
+
+    <label>Strength (optional)</label>
+    <input type="number" name="strength" placeholder="e.g. 80">
+
+    <label>Goals Scored (optional)</label>
+    <input type="number" name="goals_scored" placeholder="e.g. 0">
+
+    <label>Goals Conceded (optional)</label>
+    <input type="number" name="goals_conceded" placeholder="e.g. 0">
+
+    <label>Manager ID (optional)</label>
+    <input type="number" name="manager_id" placeholder="e.g. 1">
+
+    <button type="submit">Add Team</button>
+</form>
+
+<hr>
+
+
+{{-- -------------------- CREATE MATCH -------------------- --}}
 <h2>Create New Match</h2>
+
+@if(($teams ?? collect())->count() == 0)
+    <p class="error"><b>No teams found.</b> Add teams first, then create matches.</p>
+@else
 <form method="POST" action="/super-admin-fpl-2026/create">
     @csrf
 
     <label>Team 1</label>
-    <input name="team1" value="{{ old('team1') }}" required>
+    <select name="team1" required>
+        <option value="" disabled {{ old('team1') ? '' : 'selected' }}>Select Team 1</option>
+        @foreach(($teams ?? collect()) as $t)
+            <option value="{{ $t->team_id }}" @selected((string)old('team1') === (string)$t->team_id)>
+                {{ $t->team_name ?? ('Team '.$t->team_id) }} (ID: {{ $t->team_id }})
+            </option>
+        @endforeach
+    </select>
 
     <label>Team 2</label>
-    <input name="team2" value="{{ old('team2') }}" required>
+    <select name="team2" required>
+        <option value="" disabled {{ old('team2') ? '' : 'selected' }}>Select Team 2</option>
+        @foreach(($teams ?? collect()) as $t)
+            <option value="{{ $t->team_id }}" @selected((string)old('team2') === (string)$t->team_id)>
+                {{ $t->team_name ?? ('Team '.$t->team_id) }} (ID: {{ $t->team_id }})
+            </option>
+        @endforeach
+    </select>
+
+    <p class="hint">Tip: Team 1 and Team 2 should be different.</p>
 
     <label>Status</label>
     <select name="status" required>
@@ -55,9 +104,12 @@
 
     <button type="submit">Create</button>
 </form>
+@endif
 
 <hr>
 
+
+{{-- -------------------- EDIT MATCHES -------------------- --}}
 <h2>Edit Matches</h2>
 
 @foreach($matches as $match)
@@ -68,10 +120,34 @@
         <input type="hidden" name="id" value="{{ $match->id }}">
 
         <label>Team 1</label>
-        <input type="text" name="team1" value="{{ $match->team1 ?? '' }}" required>
+        <select name="team1" required>
+            @foreach(($teams ?? collect()) as $t)
+                @php
+                    // Preselect works if match->team1 stores team_id.
+                    // Fallback: also tries to match by team_name if your old data stored names.
+                    $isSelected =
+                        ((string)($match->team1 ?? '') === (string)$t->team_id) ||
+                        ((string)($match->team1 ?? '') === (string)($t->team_name ?? ''));
+                @endphp
+                <option value="{{ $t->team_id }}" @selected($isSelected)>
+                    {{ $t->team_name ?? ('Team '.$t->team_id) }} (ID: {{ $t->team_id }})
+                </option>
+            @endforeach
+        </select>
 
         <label>Team 2</label>
-        <input type="text" name="team2" value="{{ $match->team2 ?? '' }}" required>
+        <select name="team2" required>
+            @foreach(($teams ?? collect()) as $t)
+                @php
+                    $isSelected =
+                        ((string)($match->team2 ?? '') === (string)$t->team_id) ||
+                        ((string)($match->team2 ?? '') === (string)($t->team_name ?? ''));
+                @endphp
+                <option value="{{ $t->team_id }}" @selected($isSelected)>
+                    {{ $t->team_name ?? ('Team '.$t->team_id) }} (ID: {{ $t->team_id }})
+                </option>
+            @endforeach
+        </select>
 
         <label>Score 1</label>
         <input type="number" name="score1" value="{{ $match->score1 ?? 0 }}">

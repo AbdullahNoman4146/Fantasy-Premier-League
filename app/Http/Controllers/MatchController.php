@@ -7,21 +7,6 @@ use Illuminate\Support\Facades\DB;
 
 class MatchController extends Controller
 {
-    private function getOrCreateTeamId(string $teamName): int
-    {
-        $teamName = trim($teamName);
-
-        $team = DB::selectOne("SELECT team_id FROM teams WHERE team_name = ?", [$teamName]);
-
-        if ($team) {
-            return (int) $team->team_id;
-        }
-
-        DB::insert("INSERT INTO teams (team_name) VALUES (?)", [$teamName]);
-
-        return (int) DB::getPdo()->lastInsertId();
-    }
-
     public function index()
     {
         $currentMatches = collect(DB::select("
@@ -89,41 +74,56 @@ class MatchController extends Controller
         $matches = collect(DB::select("
             SELECT
                 m.match_id AS id,
-                ta.team_name AS team1,
-                tb.team_name AS team2,
+                m.team_a_id AS team1,
+                m.team_b_id AS team2,
                 COALESCE(r.score_a, 0) AS score1,
                 COALESCE(r.score_b, 0) AS score2,
                 m.match_time,
                 m.status,
                 m.kickoff_at
             FROM matches m
-            JOIN teams ta ON ta.team_id = m.team_a_id
-            JOIN teams tb ON tb.team_id = m.team_b_id
             LEFT JOIN results r ON r.match_id = m.match_id
             ORDER BY m.kickoff_at DESC
         "));
 
-        return view('admin.match', compact('matches'));
+        // IMPORTANT: include team_name for dropdown labels
+       $teams = collect(DB::select("
+         SELECT team_id, team_name
+         FROM teams
+        ORDER BY team_id ASC
+        "));
+
+        return view('admin.match', compact('matches', 'teams'));
     }
 
+    // ----------------------------
+    // 3b) CREATE MATCH (IDs)
+    // ----------------------------
     public function create(Request $request)
     {
         $request->validate([
-            'team1' => 'required|string',
-            'team2' => 'required|string',
+            'team1' => 'required|integer|different:team2',
+            'team2' => 'required|integer',
             'status' => 'required|in:current,upcoming,finished',
             'kickoff_at' => 'nullable|date',
         ]);
 
-        $teamAId = $this->getOrCreateTeamId($request->team1);
-        $teamBId = $this->getOrCreateTeamId($request->team2);
+        // Ensure teams exist
+        $t1 = DB::selectOne("SELECT team_id FROM teams WHERE team_id = ?", [$request->team1]);
+        $t2 = DB::selectOne("SELECT team_id FROM teams WHERE team_id = ?", [$request->team2]);
+
+        if (!$t1 || !$t2) {
+            return redirect('/super-admin-fpl-2026')
+                ->withErrors(['team1' => 'Selected teams do not exist in the database.'])
+                ->withInput();
+        }
 
         DB::insert("
             INSERT INTO matches (team_a_id, team_b_id, status, kickoff_at, match_time, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, NOW(), NOW())
         ", [
-            $teamAId,
-            $teamBId,
+            $request->team1,
+            $request->team2,
             $request->status,
             $request->kickoff_at,
             ''
@@ -131,21 +131,24 @@ class MatchController extends Controller
 
         $matchId = (int) DB::getPdo()->lastInsertId();
 
-        // Create default result row (scores start at 0)
+        // Create default result row
         DB::insert("
             INSERT INTO results (match_id, score_a, score_b, winner_team_id)
             VALUES (?, 0, 0, NULL)
         ", [$matchId]);
 
-        return back()->with('success', 'Match created!');
+        return redirect('/super-admin-fpl-2026')->with('success', 'Match created!');
     }
 
+    // ----------------------------
+    // 3c) UPDATE MATCH (IDs)
+    // ----------------------------
     public function update(Request $request)
     {
         $request->validate([
             'id' => 'required|integer',
-            'team1' => 'required|string',
-            'team2' => 'required|string',
+            'team1' => 'required|integer|different:team2',
+            'team2' => 'required|integer',
             'score1' => 'nullable|integer',
             'score2' => 'nullable|integer',
             'match_time' => 'nullable|string',
@@ -158,8 +161,15 @@ class MatchController extends Controller
             abort(404);
         }
 
-        $teamAId = $this->getOrCreateTeamId($request->team1);
-        $teamBId = $this->getOrCreateTeamId($request->team2);
+        // Ensure teams exist
+        $t1 = DB::selectOne("SELECT team_id FROM teams WHERE team_id = ?", [$request->team1]);
+        $t2 = DB::selectOne("SELECT team_id FROM teams WHERE team_id = ?", [$request->team2]);
+
+        if (!$t1 || !$t2) {
+            return redirect('/super-admin-fpl-2026')
+                ->withErrors(['team1' => 'Selected teams do not exist in the database.'])
+                ->withInput();
+        }
 
         DB::update("
             UPDATE matches
@@ -171,18 +181,15 @@ class MatchController extends Controller
                 updated_at = NOW()
             WHERE match_id = ?
         ", [
-            $teamAId,
-            $teamBId,
+            $request->team1,
+            $request->team2,
             $request->status,
             $request->kickoff_at,
             $request->match_time ?? '',
             $request->id
         ]);
 
-        $scoreA = $request->score1 ?? 0;
-        $scoreB = $request->score2 ?? 0;
-
-        // Upsert result using ON DUPLICATE KEY UPDATE (raw SQL)
+        // Upsert results
         DB::insert("
             INSERT INTO results (match_id, score_a, score_b, winner_team_id)
             VALUES (?, ?, ?, NULL)
@@ -191,10 +198,10 @@ class MatchController extends Controller
                 score_b = VALUES(score_b)
         ", [
             $request->id,
-            $scoreA,
-            $scoreB
+            $request->score1 ?? 0,
+            $request->score2 ?? 0
         ]);
 
-        return back()->with('success', 'Match updated successfully!');
+        return redirect('/super-admin-fpl-2026')->with('success', 'Match updated successfully!');
     }
 }
