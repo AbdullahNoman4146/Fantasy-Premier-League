@@ -41,7 +41,6 @@ class SponsorController extends Controller
                 t.team_name
             FROM sponsors s
             JOIN teams t ON t.team_id = s.team_id
-            ORDER BY s.sponsor_id DESC
         "));
 
         return view('sponsors', compact('sponsors'));
@@ -64,7 +63,6 @@ class SponsorController extends Controller
                 t.team_name
             FROM sponsors s
             JOIN teams t ON t.team_id = s.team_id
-            ORDER BY s.sponsor_id DESC
         "));
 
         $sponsorOptions = $this->sponsorOptions();
@@ -115,7 +113,7 @@ class SponsorController extends Controller
         VALUES (?, ?)
     ", [$request->team_id, $request->sponsor_name]);
 
-    // ✅ show success and stay on admin match page
+    // show success and stay on admin match page
     return redirect($redirectTo)->with('success', 'Sponsor assigned successfully!');
 }
 }

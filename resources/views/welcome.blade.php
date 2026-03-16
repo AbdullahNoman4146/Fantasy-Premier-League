@@ -16,181 +16,12 @@
       .overlay{
         background:rgba(0,0,0,0.75);
         min-height:100vh;
-        padding:0; /* changed because navbar will sit at top */
+        padding:0;
       }
 
-      /* ---------- NAVBAR ---------- */
-      .navbar{
-        position:sticky;
-        top:0;
-        z-index:1000;
-        background:rgba(25, 10, 55, 0.95);
-        border-bottom:1px solid rgba(255,255,255,0.15);
-        backdrop-filter: blur(8px);
-      }
-
-      .nav-inner{
-        max-width:1100px;
-        margin:0 auto;
-        padding:14px 18px;
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:14px;
-      }
-
-      .nav-left{
-        display:flex;
-        align-items:center;
-        gap:12px;
-      }
-
-      .hamburger{
-        width:42px;
-        height:42px;
-        border-radius:10px;
-        border:1px solid rgba(255,255,255,0.25);
-        background:rgba(255,255,255,0.08);
-        cursor:pointer;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-      }
-
-      .hamburger:hover{
-        background:rgba(255,255,255,0.14);
-      }
-
-      .hamburger .bar{
-        width:18px;
-        height:2px;
-        background:#fff;
-        margin:2px 0;
-        border-radius:2px;
-        opacity:0.95;
-      }
-
-      .brand{
-        display:flex;
-        flex-direction:column;
-        line-height:1.1;
-      }
-
-      .brand .title{
-        font-weight:bold;
-        font-size:16px;
-        letter-spacing:0.2px;
-      }
-
-      .brand .sub{
-        font-size:12px;
-        opacity:0.85;
-      }
-
-      .nav-links{
-        display:flex;
-        gap:10px;
-        flex-wrap:wrap;
-        justify-content:flex-end;
-      }
-
-      .nav-links a{
-        text-decoration:none;
-        color:white;
-        font-size:13px;
-        padding:8px 10px;
-        border-radius:999px;
-        border:1px solid rgba(255,255,255,0.18);
-        background:rgba(255,255,255,0.06);
-        opacity:0.95;
-      }
-
-      .nav-links a:hover{
-        background:rgba(255,255,255,0.12);
-      }
-
-      /* ---------- SIDEBAR ---------- */
-      .sidebar-backdrop{
-        position:fixed;
-        inset:0;
-        background:rgba(0,0,0,0.55);
-        z-index:1200;
-        display:none;
-      }
-
-      .sidebar{
-        position:fixed;
-        top:0;
-        left:0;
-        height:100vh;
-        width:280px;
-        background:rgba(18, 8, 40, 0.98);
-        border-right:1px solid rgba(255,255,255,0.15);
-        z-index:1300;
-        transform:translateX(-100%);
-        transition:transform 0.25s ease;
-        padding:18px;
-      }
-
-      .sidebar.open{
-        transform:translateX(0);
-      }
-
-      .sidebar-backdrop.show{
-        display:block;
-      }
-
-      .sidebar-header{
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:10px;
-        margin-bottom:14px;
-      }
-
-      .sidebar-title{
-        font-weight:bold;
-        font-size:15px;
-      }
-
-      .close-btn{
-        width:38px;
-        height:38px;
-        border-radius:10px;
-        border:1px solid rgba(255,255,255,0.22);
-        background:rgba(255,255,255,0.08);
-        cursor:pointer;
-        color:white;
-        font-size:18px;
-      }
-
-      .menu{
-        display:flex;
-        flex-direction:column;
-        gap:10px;
-        margin-top:10px;
-      }
-
-      .menu a{
-        text-decoration:none;
-        color:white;
-        padding:10px 12px;
-        border-radius:10px;
-        border:1px solid rgba(255,255,255,0.16);
-        background:rgba(255,255,255,0.06);
-        font-size:14px;
-      }
-
-      .menu a:hover{
-        background:rgba(255,255,255,0.12);
-      }
-
-      /* ---------- PAGE CONTENT ---------- */
       .page{
-        padding:30px; /* moved from overlay */
+        padding:30px;
       }
-
-      h1{ text-align:center; margin:0; }
 
       .container{
         max-width:1100px;
@@ -270,86 +101,27 @@
         flex-wrap:wrap;
       }
 
-      /* Responsive: hide top links and rely on sidebar */
       @media (max-width: 900px){
-        .nav-links{ display:none; }
+        .top-row{
+          flex-direction:column;
+        }
+
+        .finished-grid{
+          grid-template-columns:1fr;
+        }
       }
     </style>
 </head>
 
 <body>
+@include('partials.navbar')
+
 <div class="overlay">
-
-    <!-- Sidebar Backdrop -->
-    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
-
-    <!-- Sidebar -->
-    <div id="sidebar" class="sidebar">
-        <div class="sidebar-header">
-            <div class="sidebar-title">Menu</div>
-            <button id="closeSidebar" class="close-btn" type="button">×</button>
-        </div>
-
-        <!-- Put your real routes later. For now these are placeholders (#) -->
-        <div class="menu">
-            <a href="{{ url('/teams') }}">Teams</a>
-            <a href="#">Match</a>
-            <a href="#">Results</a>
-            <a href="#">Standings</a>
-            <a href="#">Players</a>
-            <a href="{{ url('/sponsors') }}">Sponsors</a>
-            <a href="#">Market Values</a>
-            <a href="#">Managers</a>
-            <a href="#">Transfer</a>
-        </div>
-    </div>
-
-    <!-- NAVBAR -->
-    <div class="navbar">
-        <div class="nav-inner">
-
-            <div class="nav-left">
-                <button id="openSidebar" class="hamburger" type="button" aria-label="Open menu">
-                    <div>
-                        <div class="bar"></div>
-                        <div class="bar"></div>
-                        <div class="bar"></div>
-                    </div>
-                </button>
-
-                <div class="brand">
-                    <div class="title">Fantasy Premier League</div>
-                    
-                </div>
-            </div>
-
-            <!-- Top links for desktop -->
-            <div class="nav-links">
-                <a href="{{ url('/teams') }}">Teams</a>
-                <a href="#">Match</a>
-                <a href="#">Results</a>
-                <a href="#">Standings</a>
-                <a href="#">Players</a>
-                <a href="{{ url('/sponsors') }}">Sponsors</a>
-                <a href="#">Market Values</a>
-                <a href="#">Managers</a>
-                <a href="#">Transfer</a>
-            </div>
-        </div>
-    </div>
-
-    <!-- PAGE CONTENT -->
     <div class="page">
-
-        
-     
-
         <div class="container">
 
-            <!-- ROW 1 -->
             <div class="top-row">
 
-                <!-- LEFT: Current Matches -->
                 <div class="left">
                     <div class="row">
                         <h2 style="margin:0;">Current Matches</h2>
@@ -372,7 +144,6 @@
                     @endif
                 </div>
 
-                <!-- RIGHT: Upcoming Fixtures -->
                 <div class="right">
                     <div class="row">
                         <h2 style="margin:0;">Upcoming Fixtures</h2>
@@ -405,7 +176,6 @@
 
             </div>
 
-            <!-- ROW 2: Finished Results -->
             <div class="bottom-row">
                 <div class="finished">
                     <div class="row">
@@ -415,85 +185,54 @@
 
                     @if(($finishedMatches ?? collect())->count())
                         <div class="finished-grid">
-
                             @foreach($finishedMatches as $index => $m)
-                                <div class="card finished-item"
-                                     style="{{ $index >= 3 ? 'display:none;' : '' }}">
+                                <div class="card finished-item" style="{{ $index >= 3 ? 'display:none;' : '' }}">
                                     <div class="muted">Played: {{ $m->kickoff_at ?? 'N/A' }}</div>
                                     <div class="teams">{{ $m->team1 ?? 'N/A' }} vs {{ $m->team2 ?? 'N/A' }}</div>
                                     <div class="score">{{ $m->score1 ?? 0 }} - {{ $m->score2 ?? 0 }}</div>
                                 </div>
                             @endforeach
-
                         </div>
 
                         @if(($finishedMatches ?? collect())->count() > 3)
                             <div style="text-align:center; margin-top:15px;">
-                                <button id="seeMoreBtn"
-                                        style="padding:10px 18px; border-radius:8px; border:none; cursor:pointer;">
+                                <button id="seeMoreBtn" style="padding:10px 18px; border-radius:8px; border:none; cursor:pointer;">
                                     See More
                                 </button>
                             </div>
                         @endif
-
                     @else
                         <p>No finished results yet.</p>
                     @endif
                 </div>
             </div>
 
-            <script>
-                // Finished results See More / See Less
-                document.addEventListener("DOMContentLoaded", function () {
-                    const btn = document.getElementById("seeMoreBtn");
-
-                    if (btn) {
-                        let expanded = false;
-
-                        btn.addEventListener("click", function () {
-                            const items = document.querySelectorAll(".finished-item");
-
-                            items.forEach((item, index) => {
-                                if (index >= 3) {
-                                    item.style.display = expanded ? "none" : "block";
-                                }
-                            });
-
-                            btn.textContent = expanded ? "See More" : "See Less";
-                            expanded = !expanded;
-                        });
-                    }
-
-                    // Sidebar open/close
-                    const sidebar = document.getElementById("sidebar");
-                    const backdrop = document.getElementById("sidebarBackdrop");
-                    const openBtn = document.getElementById("openSidebar");
-                    const closeBtn = document.getElementById("closeSidebar");
-
-                    function openSidebar() {
-                        sidebar.classList.add("open");
-                        backdrop.classList.add("show");
-                    }
-
-                    function closeSidebar() {
-                        sidebar.classList.remove("open");
-                        backdrop.classList.remove("show");
-                    }
-
-                    openBtn.addEventListener("click", openSidebar);
-                    closeBtn.addEventListener("click", closeSidebar);
-                    backdrop.addEventListener("click", closeSidebar);
-
-                    // ESC key closes sidebar
-                    document.addEventListener("keydown", function (e) {
-                        if (e.key === "Escape") closeSidebar();
-                    });
-                });
-            </script>
-
         </div>
     </div>
-
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const btn = document.getElementById("seeMoreBtn");
+
+    if (btn) {
+        let expanded = false;
+
+        btn.addEventListener("click", function () {
+            const items = document.querySelectorAll(".finished-item");
+
+            items.forEach((item, index) => {
+                if (index >= 3) {
+                    item.style.display = expanded ? "none" : "block";
+                }
+            });
+
+            btn.textContent = expanded ? "See More" : "See Less";
+            expanded = !expanded;
+        });
+    }
+});
+</script>
+
 </body>
 </html>

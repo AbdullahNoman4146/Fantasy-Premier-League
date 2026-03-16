@@ -86,19 +86,42 @@ class MatchController extends Controller
             ORDER BY m.kickoff_at DESC
         "));
 
-        // IMPORTANT: include team_name for dropdown labels
-       $teams = collect(DB::select("
-         SELECT team_id, team_name
-         FROM teams
-        ORDER BY team_id ASC
+        $teams = collect(DB::select("
+            SELECT
+                team_id,
+                team_name
+            FROM teams
+            ORDER BY team_name ASC
         "));
 
-        return view('admin.match', compact('matches', 'teams'));
+        $sponsors = collect(DB::select("
+            SELECT
+                s.sponsor_id,
+                s.sponsor_name,
+                t.team_name
+            FROM sponsors s
+            JOIN teams t ON t.team_id = s.team_id
+            ORDER BY s.sponsor_id DESC
+        "));
+
+        $players = collect(DB::select("
+            SELECT
+                p.team_id,
+                p.jersey_number,
+                p.position,
+                t.team_name,
+                pe.first_name,
+                pe.last_name,
+                pe.nationality
+            FROM players p
+            JOIN persons pe ON pe.person_id = p.person_id
+            JOIN teams t ON t.team_id = p.team_id
+            ORDER BY t.team_name ASC, p.jersey_number ASC
+        "));
+
+        return view('admin.match', compact('matches', 'teams', 'sponsors', 'players'));
     }
 
-    // ----------------------------
-    // 3b) CREATE MATCH (IDs)
-    // ----------------------------
     public function create(Request $request)
     {
         $request->validate([
@@ -108,7 +131,6 @@ class MatchController extends Controller
             'kickoff_at' => 'nullable|date',
         ]);
 
-        // Ensure teams exist
         $t1 = DB::selectOne("SELECT team_id FROM teams WHERE team_id = ?", [$request->team1]);
         $t2 = DB::selectOne("SELECT team_id FROM teams WHERE team_id = ?", [$request->team2]);
 
@@ -131,7 +153,6 @@ class MatchController extends Controller
 
         $matchId = (int) DB::getPdo()->lastInsertId();
 
-        // Create default result row
         DB::insert("
             INSERT INTO results (match_id, score_a, score_b, winner_team_id)
             VALUES (?, 0, 0, NULL)
@@ -140,9 +161,6 @@ class MatchController extends Controller
         return redirect('/super-admin-fpl-2026')->with('success', 'Match created!');
     }
 
-    // ----------------------------
-    // 3c) UPDATE MATCH (IDs)
-    // ----------------------------
     public function update(Request $request)
     {
         $request->validate([
@@ -161,7 +179,6 @@ class MatchController extends Controller
             abort(404);
         }
 
-        // Ensure teams exist
         $t1 = DB::selectOne("SELECT team_id FROM teams WHERE team_id = ?", [$request->team1]);
         $t2 = DB::selectOne("SELECT team_id FROM teams WHERE team_id = ?", [$request->team2]);
 
@@ -189,7 +206,6 @@ class MatchController extends Controller
             $request->id
         ]);
 
-        // Upsert results
         DB::insert("
             INSERT INTO results (match_id, score_a, score_b, winner_team_id)
             VALUES (?, ?, ?, NULL)
