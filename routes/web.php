@@ -16,6 +16,7 @@ Route::get('/matches', [MatchController::class, 'fixtures'])->name('matches.inde
 Route::get('/results', [MatchController::class, 'results'])->name('results.index');
 Route::get('/standings', [MatchController::class, 'standings'])->name('standings.index');
 Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
+Route::get('/teams/{teamId}', [TeamController::class, 'show'])->whereNumber('teamId')->name('teams.show');
 Route::get('/players', [PlayerController::class, 'index'])->name('players.index');
 Route::get('/sponsors', [SponsorController::class, 'index'])->name('sponsors.index');
 Route::get('/managers', [ManagerController::class, 'index'])->name('managers.index');

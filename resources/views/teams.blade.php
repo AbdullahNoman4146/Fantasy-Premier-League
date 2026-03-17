@@ -59,6 +59,26 @@
             font-size:15px;
             letter-spacing:0.3px;
         }
+
+        .team-row{
+            cursor:pointer;
+            transition:background 0.18s ease, transform 0.18s ease;
+        }
+
+        .team-row:hover{
+            background:rgba(255,255,255,0.08);
+        }
+
+        .team-row:focus{
+            outline:2px solid rgba(255,255,255,0.45);
+            outline-offset:-2px;
+        }
+
+        .hint{
+            margin-top:12px;
+            opacity:0.78;
+            font-size:13px;
+        }
     </style>
 </head>
 
@@ -81,7 +101,7 @@
                     </thead>
                     <tbody>
                     @foreach($teams as $t)
-                        <tr>
+                        <tr class="team-row" tabindex="0" onclick="window.location='{{ route('teams.show', $t->team_id) }}'" onkeydown="if(event.key==='Enter' || event.key===' '){ event.preventDefault(); window.location='{{ route('teams.show', $t->team_id) }}'; }">
                             <td><span class="badge">Team {{ $t->team_id }}</span></td>
                             <td>{{ $t->team_name ?? 'N/A' }}</td>
                             <td>{{ $t->strength ?? 'N/A' }}</td>
@@ -89,6 +109,8 @@
                     @endforeach
                     </tbody>
                 </table>
+
+                <div class="hint">Click any team row to open the team details page.</div>
             @else
                 <p>No teams found. Go to Admin and add some teams first.</p>
             @endif
