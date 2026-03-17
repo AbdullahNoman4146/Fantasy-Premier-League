@@ -7,24 +7,37 @@ use Illuminate\Support\Facades\DB;
 
 class TransferController extends Controller
 {
-    public function index()
-    {
-        $posts = collect(DB::select("
-            SELECT
-                transfer_post_id,
-                title,
-                summary,
-                content,
-                status,
-                posted_at,
-                created_at
-            FROM transfer_posts
-            WHERE status = 'published'
-            ORDER BY COALESCE(posted_at, created_at) DESC, transfer_post_id DESC
-        "));
+    public function index(Request $request)
+{
+    $search = preg_replace('/\s+/', ' ', trim((string) $request->query('q', ''))) ?? '';
 
-        return view('transfers', compact('posts'));
-    }
+    $posts = collect(DB::select("
+        SELECT
+            transfer_post_id,
+            title,
+            summary,
+            content,
+            status,
+            posted_at,
+            created_at
+        FROM transfer_posts
+        WHERE status = 'published'
+          AND (
+                (? = '')
+                OR title LIKE ?
+                OR COALESCE(summary, '') LIKE ?
+                OR content LIKE ?
+              )
+        ORDER BY COALESCE(posted_at, created_at) DESC, transfer_post_id DESC
+    ", [
+        $search,
+        '%' . $search . '%',
+        '%' . $search . '%',
+        '%' . $search . '%',
+    ]));
+
+    return view('transfers', compact('posts', 'search'));
+}
 
     public function show(int $id)
     {

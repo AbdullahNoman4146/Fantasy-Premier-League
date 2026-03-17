@@ -30,21 +30,30 @@ class SponsorController extends Controller
         ];
     }
 
-    public function index()
-    {
-        $sponsors = collect(DB::select("
-            SELECT
-                s.sponsor_id,
-                s.sponsor_name,
-                t.team_id,
-                t.team_name
-            FROM sponsors s
-            JOIN teams t ON t.team_id = s.team_id
-            ORDER BY t.team_name ASC, s.sponsor_name ASC
-        "));
+    public function index(Request $request)
+{
+    $search = preg_replace('/\s+/', ' ', trim((string) $request->query('q', ''))) ?? '';
 
-        return view('sponsors', compact('sponsors'));
-    }
+    $sponsors = collect(DB::select("
+        SELECT
+            s.sponsor_id,
+            s.sponsor_name,
+            t.team_id,
+            t.team_name
+        FROM sponsors s
+        JOIN teams t ON t.team_id = s.team_id
+        WHERE (? = '')
+           OR s.sponsor_name LIKE ?
+           OR t.team_name LIKE ?
+        ORDER BY t.team_name ASC, s.sponsor_name ASC
+    ", [
+        $search,
+        '%' . $search . '%',
+        '%' . $search . '%',
+    ]));
+
+    return view('sponsors', compact('sponsors', 'search'));
+}
 
     public function admin()
     {

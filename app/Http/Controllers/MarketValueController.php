@@ -7,30 +7,49 @@ use Illuminate\Support\Facades\DB;
 
 class MarketValueController extends Controller
 {
-    public function index()
-    {
-        $marketValues = collect(DB::select("
-            SELECT
-                pmv.player_market_value_id,
-                pmv.season,
-                pmv.market_value,
-                pmv.currency,
-                pmv.notes,
-                pmv.team_id,
-                pmv.jersey_number,
-                t.team_name,
-                p.first_name,
-                p.last_name,
-                pl.position
-            FROM player_market_values pmv
-            JOIN players pl ON pl.team_id = pmv.team_id AND pl.jersey_number = pmv.jersey_number
-            JOIN persons p ON p.person_id = pl.person_id
-            JOIN teams t ON t.team_id = pmv.team_id
-            ORDER BY pmv.season DESC, pmv.market_value DESC, t.team_name ASC, pmv.jersey_number ASC
-        "));
+    public function index(Request $request)
+{
+    $search = preg_replace('/\s+/', ' ', trim((string) $request->query('q', ''))) ?? '';
 
-        return view('market-values', compact('marketValues'));
-    }
+    $marketValues = collect(DB::select("
+        SELECT
+            pmv.player_market_value_id,
+            pmv.season,
+            pmv.market_value,
+            pmv.currency,
+            pmv.notes,
+            pmv.team_id,
+            pmv.jersey_number,
+            t.team_name,
+            p.first_name,
+            p.last_name,
+            pl.position
+        FROM player_market_values pmv
+        JOIN players pl ON pl.team_id = pmv.team_id AND pl.jersey_number = pmv.jersey_number
+        JOIN persons p ON p.person_id = pl.person_id
+        JOIN teams t ON t.team_id = pmv.team_id
+        WHERE (? = '')
+           OR p.first_name LIKE ?
+           OR p.last_name LIKE ?
+           OR CONCAT(COALESCE(p.first_name, ''), ' ', COALESCE(p.last_name, '')) LIKE ?
+           OR t.team_name LIKE ?
+           OR COALESCE(pl.position, '') LIKE ?
+           OR pmv.season LIKE ?
+           OR COALESCE(pmv.notes, '') LIKE ?
+        ORDER BY pmv.season DESC, pmv.market_value DESC, t.team_name ASC, pmv.jersey_number ASC
+    ", [
+        $search,
+        '%' . $search . '%',
+        '%' . $search . '%',
+        '%' . $search . '%',
+        '%' . $search . '%',
+        '%' . $search . '%',
+        '%' . $search . '%',
+        '%' . $search . '%',
+    ]));
+
+    return view('market-values', compact('marketValues', 'search'));
+}
 
     public function store(Request $request)
     {

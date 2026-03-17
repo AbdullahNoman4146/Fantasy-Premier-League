@@ -7,27 +7,41 @@ use Illuminate\Support\Facades\DB;
 
 class PlayerController extends Controller
 {
-    public function index()
-    {
-        $players = DB::table('players as p')
-            ->join('persons as pe', 'pe.person_id', '=', 'p.person_id')
-            ->join('teams as t', 't.team_id', '=', 'p.team_id')
-            ->select(
-                'p.team_id',
-                'p.jersey_number',
-                'p.person_id',
-                'p.position',
-                't.team_name',
-                'pe.first_name',
-                'pe.last_name',
-                'pe.nationality'
-            )
-            ->orderBy('t.team_name')
-            ->orderBy('p.jersey_number')
-            ->get();
+    public function index(Request $request)
+{
+    $search = preg_replace('/\s+/', ' ', trim((string) $request->query('q', ''))) ?? '';
 
-        return view('players', compact('players'));
-    }
+    $players = DB::table('players as p')
+        ->join('persons as pe', 'pe.person_id', '=', 'p.person_id')
+        ->join('teams as t', 't.team_id', '=', 'p.team_id')
+        ->select(
+            'p.team_id',
+            'p.jersey_number',
+            'p.person_id',
+            'p.position',
+            't.team_name',
+            'pe.first_name',
+            'pe.last_name',
+            'pe.nationality'
+        )
+        ->when($search !== '', function ($query) use ($search) {
+            $like = '%' . $search . '%';
+
+            $query->where(function ($subQuery) use ($like) {
+                $subQuery->where('pe.first_name', 'like', $like)
+                    ->orWhere('pe.last_name', 'like', $like)
+                    ->orWhereRaw("CONCAT(COALESCE(pe.first_name, ''), ' ', COALESCE(pe.last_name, '')) LIKE ?", [$like])
+                    ->orWhere('t.team_name', 'like', $like)
+                    ->orWhere('pe.nationality', 'like', $like)
+                    ->orWhere('p.position', 'like', $like);
+            });
+        })
+        ->orderBy('t.team_name')
+        ->orderBy('p.jersey_number')
+        ->get();
+
+    return view('players', compact('players', 'search'));
+}
 
     public function store(Request $request)
     {
