@@ -16,26 +16,75 @@ class MatchController extends Controller
         return view('welcome', compact('currentMatches', 'finishedMatches', 'upcomingFixtures'));
     }
 
-    public function fixtures()
-    {
-        $fixtures = $this->getMatchesByStatus('upcoming', 'm.kickoff_at ASC');
+    public function fixtures(Request $request)
+{
+    $search = preg_replace('/\s+/', ' ', trim((string) $request->query('q', ''))) ?? '';
 
-        return view('matches', compact('fixtures'));
+    $fixtures = $this->getMatchesByStatus('upcoming', 'm.kickoff_at ASC');
+
+    if ($search !== '') {
+        $needle = mb_strtolower($search);
+
+        $fixtures = $fixtures->filter(function ($match) use ($needle) {
+            $haystack = mb_strtolower(
+                ($match->team1 ?? '') . ' ' .
+                ($match->team2 ?? '') . ' ' .
+                ($match->match_time ?? '') . ' ' .
+                ($match->status ?? '') . ' ' .
+                ($match->kickoff_at ?? '')
+            );
+
+            return str_contains($haystack, $needle);
+        })->values();
     }
 
-    public function results()
-    {
-        $results = $this->getMatchesByStatus('finished', 'm.kickoff_at DESC');
+    return view('matches', compact('fixtures', 'search'));
+}
 
-        return view('results', compact('results'));
+    public function results(Request $request)
+{
+    $search = preg_replace('/\s+/', ' ', trim((string) $request->query('q', ''))) ?? '';
+
+    $results = $this->getMatchesByStatus('finished', 'm.kickoff_at DESC');
+
+    if ($search !== '') {
+        $needle = mb_strtolower($search);
+
+        $results = $results->filter(function ($match) use ($needle) {
+            $haystack = mb_strtolower(
+                ($match->team1 ?? '') . ' ' .
+                ($match->team2 ?? '') . ' ' .
+                ($match->match_time ?? '') . ' ' .
+                ($match->status ?? '') . ' ' .
+                ($match->kickoff_at ?? '') . ' ' .
+                ($match->score1 ?? '') . ' ' .
+                ($match->score2 ?? '')
+            );
+
+            return str_contains($haystack, $needle);
+        })->values();
     }
 
-    public function standings()
-    {
-        $standings = $this->getStandingsTable();
+    return view('results', compact('results', 'search'));
+}
 
-        return view('standings', compact('standings'));
+    public function standings(Request $request)
+{
+    $search = preg_replace('/\s+/', ' ', trim((string) $request->query('q', ''))) ?? '';
+
+    $standings = $this->getStandingsTable();
+
+    if ($search !== '') {
+        $needle = mb_strtolower($search);
+
+        $standings = $standings->filter(function ($row) use ($needle) {
+            $haystack = mb_strtolower($row->team_name ?? '');
+            return str_contains($haystack, $needle);
+        })->values();
     }
+
+    return view('standings', compact('standings', 'search'));
+}
 
     public function admin()
     {

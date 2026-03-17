@@ -7,25 +7,40 @@ use Illuminate\Support\Facades\DB;
 
 class ManagerController extends Controller
 {
-    public function index()
-    {
-        $managers = collect(DB::select("
-            SELECT
-                m.person_id,
-                m.team_id,
-                m.experience_years,
-                p.first_name,
-                p.last_name,
-                p.nationality,
-                t.team_name
-            FROM managers m
-            JOIN persons p ON p.person_id = m.person_id
-            LEFT JOIN teams t ON t.team_id = m.team_id
-            ORDER BY t.team_name ASC, p.first_name ASC, p.last_name ASC
-        "));
+    public function index(Request $request)
+{
+    $search = preg_replace('/\s+/', ' ', trim((string) $request->query('q', ''))) ?? '';
 
-        return view('managers', compact('managers'));
-    }
+    $managers = collect(DB::select("
+        SELECT
+            m.person_id,
+            m.team_id,
+            m.experience_years,
+            p.first_name,
+            p.last_name,
+            p.nationality,
+            t.team_name
+        FROM managers m
+        JOIN persons p ON p.person_id = m.person_id
+        LEFT JOIN teams t ON t.team_id = m.team_id
+        WHERE (? = '')
+           OR p.first_name LIKE ?
+           OR p.last_name LIKE ?
+           OR CONCAT(COALESCE(p.first_name, ''), ' ', COALESCE(p.last_name, '')) LIKE ?
+           OR COALESCE(p.nationality, '') LIKE ?
+           OR COALESCE(t.team_name, '') LIKE ?
+        ORDER BY t.team_name ASC, p.first_name ASC, p.last_name ASC
+    ", [
+        $search,
+        '%' . $search . '%',
+        '%' . $search . '%',
+        '%' . $search . '%',
+        '%' . $search . '%',
+        '%' . $search . '%',
+    ]));
+
+    return view('managers', compact('managers', 'search'));
+}
 
     public function store(Request $request)
     {

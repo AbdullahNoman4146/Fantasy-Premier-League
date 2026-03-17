@@ -8,24 +8,33 @@ use Illuminate\Support\Facades\DB;
 
 class TeamController extends Controller
 {
-    public function index()
-    {
-        $teams = collect(DB::select("
-            SELECT
-                t.team_id,
-                t.team_name,
-                t.strength,
-                COALESCE(t.goals_scored, 0) AS goals_scored,
-                COALESCE(t.goals_conceded, 0) AS goals_conceded,
-                TRIM(CONCAT(COALESCE(p.first_name, ''), ' ', COALESCE(p.last_name, ''))) AS manager_name
-            FROM teams t
-            LEFT JOIN managers m ON m.person_id = t.manager_id
-            LEFT JOIN persons p ON p.person_id = m.person_id
-            ORDER BY t.team_name ASC
-        "));
+    public function index(Request $request)
+{
+    $search = preg_replace('/\s+/', ' ', trim((string) $request->query('q', ''))) ?? '';
 
-        return view('teams', compact('teams'));
-    }
+    $teams = collect(DB::select("
+        SELECT
+            t.team_id,
+            t.team_name,
+            t.strength,
+            COALESCE(t.goals_scored, 0) AS goals_scored,
+            COALESCE(t.goals_conceded, 0) AS goals_conceded,
+            TRIM(CONCAT(COALESCE(p.first_name, ''), ' ', COALESCE(p.last_name, ''))) AS manager_name
+        FROM teams t
+        LEFT JOIN managers m ON m.person_id = t.manager_id
+        LEFT JOIN persons p ON p.person_id = m.person_id
+        WHERE (? = '')
+           OR t.team_name LIKE ?
+           OR TRIM(CONCAT(COALESCE(p.first_name, ''), ' ', COALESCE(p.last_name, ''))) LIKE ?
+        ORDER BY t.team_name ASC
+    ", [
+        $search,
+        '%' . $search . '%',
+        '%' . $search . '%',
+    ]));
+
+    return view('teams', compact('teams', 'search'));
+}
 
     public function show(int $teamId)
     {

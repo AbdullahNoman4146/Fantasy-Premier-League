@@ -4,6 +4,7 @@ use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\MarketValueController;
 use App\Http\Controllers\MatchController;
 use App\Http\Controllers\PlayerController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SponsorController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TransferController;
@@ -23,6 +24,8 @@ Route::get('/managers', [ManagerController::class, 'index'])->name('managers.ind
 Route::get('/market-values', [MarketValueController::class, 'index'])->name('market-values.index');
 Route::get('/transfers', [TransferController::class, 'index'])->name('transfers.index');
 Route::get('/transfers/{id}', [TransferController::class, 'show'])->name('transfers.show');
+
+Route::get('/search', [SearchController::class, 'index'])->name('search.global');
 
 // ADMIN
 Route::get('/super-admin-fpl-2026', [MatchController::class, 'admin'])->name('admin.panel');
