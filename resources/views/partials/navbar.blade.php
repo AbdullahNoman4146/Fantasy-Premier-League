@@ -33,7 +33,7 @@
 
     <div class="menu">
         <a href="{{ url('/') }}" class="{{ request()->routeIs('home') ? 'active' : '' }}">Home</a>
-        <a href="{{ route('teams.index') }}" class="{{ request()->routeIs('teams.index') ? 'active' : '' }}">Teams</a>
+        <a href="{{ route('teams.index') }}" class="{{ request()->routeIs('teams.*') ? 'active' : '' }}">Teams</a>
         <a href="{{ route('matches.index') }}" class="{{ request()->routeIs('matches.index') ? 'active' : '' }}">Match</a>
         <a href="{{ route('results.index') }}" class="{{ request()->routeIs('results.index') ? 'active' : '' }}">Results</a>
         <a href="{{ route('standings.index') }}" class="{{ request()->routeIs('standings.index') ? 'active' : '' }}">Standings</a>
@@ -62,7 +62,7 @@
         </div>
 
         <div class="nav-links">
-            <a href="{{ route('teams.index') }}" class="{{ request()->routeIs('teams.index') ? 'active' : '' }}">Teams</a>
+            <a href="{{ route('teams.index') }}" class="{{ request()->routeIs('teams.*') ? 'active' : '' }}">Teams</a>
             <a href="{{ route('matches.index') }}" class="{{ request()->routeIs('matches.index') ? 'active' : '' }}">Match</a>
             <a href="{{ route('results.index') }}" class="{{ request()->routeIs('results.index') ? 'active' : '' }}">Results</a>
             <a href="{{ route('standings.index') }}" class="{{ request()->routeIs('standings.index') ? 'active' : '' }}">Standings</a>
