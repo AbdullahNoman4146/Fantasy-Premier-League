@@ -30,7 +30,6 @@ class SponsorController extends Controller
         ];
     }
 
-    // PUBLIC: /sponsors
     public function index()
     {
         $sponsors = collect(DB::select("
@@ -41,79 +40,105 @@ class SponsorController extends Controller
                 t.team_name
             FROM sponsors s
             JOIN teams t ON t.team_id = s.team_id
+            ORDER BY t.team_name ASC, s.sponsor_name ASC
         "));
 
         return view('sponsors', compact('sponsors'));
     }
 
-    // ADMIN PAGE: /super-admin-fpl-2026/sponsors
     public function admin()
     {
-        $teams = collect(DB::select("
-            SELECT team_id, team_name
-            FROM teams
-            ORDER BY team_name ASC
-        "));
-
+        $teams = collect(DB::select("SELECT team_id, team_name FROM teams ORDER BY team_name ASC"));
         $sponsors = collect(DB::select("
-            SELECT
-                s.sponsor_id,
-                s.sponsor_name,
-                t.team_id,
-                t.team_name
+            SELECT s.sponsor_id, s.sponsor_name, t.team_id, t.team_name
             FROM sponsors s
             JOIN teams t ON t.team_id = s.team_id
+            ORDER BY t.team_name ASC, s.sponsor_name ASC
         "));
-
         $sponsorOptions = $this->sponsorOptions();
 
         return view('admin.sponsors', compact('teams', 'sponsors', 'sponsorOptions'));
     }
 
-    // ADMIN ACTION: assign sponsor to team (dropdown only)
     public function store(Request $request)
-{
-    $allowed = $this->sponsorOptions();
+    {
+        $allowed = $this->sponsorOptions();
 
-    // where to go back after submit (match admin page)
-    $redirectTo = $request->input('redirect_to', '/super-admin-fpl-2026');
+        $request->validate([
+            'sponsor_name' => 'required|string',
+            'team_id' => 'required|integer|exists:teams,team_id',
+        ]);
 
-    $request->validate([
-        'sponsor_name' => 'required|string',
-        'team_id' => 'required|integer',
-    ]);
+        if (!in_array($request->sponsor_name, $allowed, true)) {
+            return redirect()->route('admin.panel')
+                ->withErrors(['sponsor_name' => 'Invalid sponsor selected.'])
+                ->withInput();
+        }
 
-    if (!in_array($request->sponsor_name, $allowed, true)) {
-        return redirect($redirectTo)
-            ->withErrors(['sponsor_name' => 'Invalid sponsor selected.'])
-            ->withInput();
+        $exists = DB::table('sponsors')
+            ->where('sponsor_name', $request->sponsor_name)
+            ->where('team_id', $request->team_id)
+            ->exists();
+
+        if ($exists) {
+            return redirect()->route('admin.panel')
+                ->withErrors(['sponsor_name' => 'This sponsor is already assigned to this team.'])
+                ->withInput();
+        }
+
+        DB::insert('INSERT INTO sponsors (team_id, sponsor_name) VALUES (?, ?)', [
+            $request->team_id,
+            $request->sponsor_name,
+        ]);
+
+        return redirect()->route('admin.panel')->with('success', 'Sponsor assigned successfully.');
     }
 
-    $team = DB::selectOne("SELECT team_id FROM teams WHERE team_id = ?", [$request->team_id]);
-    if (!$team) {
-        return redirect($redirectTo)
-            ->withErrors(['team_id' => 'Selected team does not exist.'])
-            ->withInput();
+    public function update(Request $request)
+    {
+        $allowed = $this->sponsorOptions();
+
+        $request->validate([
+            'sponsor_id' => 'required|integer|exists:sponsors,sponsor_id',
+            'sponsor_name' => 'required|string',
+            'team_id' => 'required|integer|exists:teams,team_id',
+        ]);
+
+        if (!in_array($request->sponsor_name, $allowed, true)) {
+            return redirect()->route('admin.panel')
+                ->withErrors(['sponsor_name' => 'Invalid sponsor selected.'])
+                ->withInput();
+        }
+
+        $exists = DB::table('sponsors')
+            ->where('sponsor_name', $request->sponsor_name)
+            ->where('team_id', $request->team_id)
+            ->where('sponsor_id', '!=', $request->sponsor_id)
+            ->exists();
+
+        if ($exists) {
+            return redirect()->route('admin.panel')
+                ->withErrors(['sponsor_update' => 'That sponsor assignment already exists.'])
+                ->withInput();
+        }
+
+        DB::update('UPDATE sponsors SET sponsor_name = ?, team_id = ? WHERE sponsor_id = ?', [
+            $request->sponsor_name,
+            $request->team_id,
+            $request->sponsor_id,
+        ]);
+
+        return redirect()->route('admin.panel')->with('success', 'Sponsor updated successfully.');
     }
 
-    $exists = DB::selectOne("
-        SELECT sponsor_id
-        FROM sponsors
-        WHERE sponsor_name = ? AND team_id = ?
-    ", [$request->sponsor_name, $request->team_id]);
+    public function destroy(Request $request)
+    {
+        $request->validate([
+            'sponsor_id' => 'required|integer|exists:sponsors,sponsor_id',
+        ]);
 
-    if ($exists) {
-        return redirect($redirectTo)
-            ->withErrors(['sponsor_name' => 'This sponsor is already assigned to this team.'])
-            ->withInput();
+        DB::delete('DELETE FROM sponsors WHERE sponsor_id = ?', [$request->sponsor_id]);
+
+        return redirect()->route('admin.panel')->with('success', 'Sponsor deleted successfully.');
     }
-
-    DB::insert("
-        INSERT INTO sponsors (team_id, sponsor_name)
-        VALUES (?, ?)
-    ", [$request->team_id, $request->sponsor_name]);
-
-    // show success and stay on admin match page
-    return redirect($redirectTo)->with('success', 'Sponsor assigned successfully!');
-}
 }

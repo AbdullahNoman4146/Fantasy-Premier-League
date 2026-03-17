@@ -2,570 +2,1454 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel</title>
+    <title>Admin Panel - Fantasy Premier League</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        *{ box-sizing:border-box; }
+        * { box-sizing: border-box; }
 
-        body{
-            font-family:Arial,sans-serif;
-            padding:0;
-            margin:0;
-            background:#f6f7fb;
-            color:#1e1e1e;
+        body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    color: #fff;
+    background: #0f172a;
+}
+
+        .overlay {
+    min-height: 100vh;
+    padding: 24px;
+    background: transparent;
+}
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
         }
 
-        .page-wrap{
-            padding:20px;
+        .header-card,
+        .form-card,
+        .table-card {
+            background: #111827;
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 16px;
+            box-shadow: 0 10px 35px rgba(0,0,0,0.25);
         }
 
-        .toolbar{
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            gap:12px;
-            flex-wrap:wrap;
-            margin-bottom:16px;
+        .header-card {
+            padding: 22px;
+            margin-bottom: 18px;
         }
 
-        .toolbar-actions{
-            display:flex;
-            gap:10px;
-            flex-wrap:wrap;
+        .header-card h1 {
+            margin: 0 0 8px;
+            font-size: 28px;
         }
 
-        .toolbar-actions button{
-            padding:10px 14px;
-            border:none;
-            border-radius:10px;
-            background:#141b34;
-            color:#fff;
-            cursor:pointer;
+        .header-card p {
+            margin: 0;
+            opacity: .85;
         }
 
-        .admin-shell{
-            max-width:1200px;
-            margin:0 auto;
-            transition:all .25s ease;
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 18px;
         }
 
-        .admin-shell.wide{
-            max-width:100%;
+        .stat-card {
+            padding: 18px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.10);
         }
 
-        details.panel{
-            background:#fff;
-            border:1px solid #ddd;
-            border-radius:14px;
-            margin-bottom:16px;
-            overflow:hidden;
-            box-shadow:0 2px 10px rgba(0,0,0,0.04);
+        .stat-label {
+            font-size: 13px;
+            opacity: .85;
+            margin-bottom: 8px;
         }
 
-        details.panel > summary{
-            list-style:none;
-            cursor:pointer;
-            padding:16px 18px;
-            font-weight:800;
-            font-size:18px;
-            background:#f9fafc;
-            border-bottom:1px solid #eee;
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
         }
 
-        details.panel > summary::-webkit-details-marker{
-            display:none;
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 18px;
         }
 
-        .panel-body{
-            padding:18px;
+        .tab-btn {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.14);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: .2s ease;
+            font-size: 14px;
         }
 
-        .card{
-            border:1px solid #ddd;
-            padding:15px;
-            margin-bottom:12px;
-            border-radius:10px;
-            background:#fff;
+        .tab-btn:hover,
+        .tab-btn.active {
+            background: rgba(255,255,255,0.16);
+            border-color: rgba(255,255,255,0.22);
         }
 
-        label{
-            font-weight:bold;
-            display:block;
-            margin-bottom:4px;
+        .tab-section {
+            display: none;
         }
 
-        input, select{
-            width:100%;
-            padding:10px;
-            margin:6px 0 12px;
-            border:1px solid #ccc;
-            border-radius:10px;
-            background:#fff;
+        .tab-section.active {
+            display: block;
         }
 
-        button[type="submit"]{
-            padding:10px 14px;
-            cursor:pointer;
-            border:none;
-            border-radius:10px;
-            background:#1e3a8a;
-            color:#fff;
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+            margin-bottom: 18px;
         }
 
-        .success{ color:green; }
-        .error{ color:#b00020; }
-
-        .error-box{
-            border:1px solid #f2b8c6;
-            background:#fff0f3;
-            padding:10px;
-            border-radius:10px;
-            margin:12px 0;
+        .form-card,
+        .table-card {
+            padding: 18px;
+            margin-bottom: 18px;
         }
 
-        .hint{
-            font-size:12px;
-            opacity:.75;
-            margin-top:-6px;
-            margin-bottom:10px;
+        .card-title {
+            margin: 0 0 14px;
+            font-size: 20px;
         }
 
-        table{
-            width:100%;
-            border-collapse:collapse;
-            margin-top:10px;
-            background:#fff;
+        .small-note {
+            margin: -4px 0 14px;
+            font-size: 13px;
+            opacity: .8;
         }
 
-        th, td{
-            padding:10px;
-            border-bottom:1px solid #eee;
-            text-align:left;
-            vertical-align:top;
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
         }
 
-        th{
-            font-weight:800;
-            font-size:14px;
-            background:#fafafa;
+        .form-grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
         }
 
-        .badge{
-            display:inline-block;
-            padding:4px 10px;
-            border-radius:999px;
-            border:1px solid #ddd;
-            font-size:12px;
-            background:#f8f8f8;
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
         }
 
-        .grid-2{
-            display:grid;
-            grid-template-columns:1fr 1fr;
-            gap:14px;
+        .full {
+            grid-column: 1 / -1;
         }
 
-        @media (max-width: 900px){
-            .grid-2{
-                grid-template-columns:1fr;
+        label {
+            font-size: 13px;
+            opacity: .92;
+        }
+
+        input, select, textarea, button {
+            font-family: inherit;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 11px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.14);
+            background: rgba(255,255,255,0.07);
+            color: #fff;
+            outline: none;
+        }
+
+        select {
+    background-color: #1f2937;
+    color: #fff;
+}
+
+select option {
+    background-color: #111827;
+    color: #fff;
+}
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+            color: rgba(255,255,255,0.55);
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            cursor: pointer;
+            font-weight: bold;
+            transition: .2s ease;
+        }
+
+        .btn-primary { background: #2563eb; }
+        .btn-success { background: #16a34a; }
+        .btn-warning { background: #d97706; }
+        .btn-danger  { background: #dc2626; }
+
+        .btn:hover {
+            filter: brightness(1.08);
+        }
+
+        .action-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .alert {
+            padding: 12px 14px;
+            border-radius: 12px;
+            margin-bottom: 14px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background: rgba(22,163,74,.18);
+            border: 1px solid rgba(22,163,74,.45);
+        }
+
+        .alert-error {
+            background: rgba(220,38,38,.18);
+            border: 1px solid rgba(220,38,38,.45);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 12px 10px;
+            text-align: left;
+            vertical-align: top;
+            border-bottom: 1px solid rgba(255,255,255,0.10);
+        }
+
+        th {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            opacity: .86;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            border: 1px solid rgba(255,255,255,.18);
+            background: rgba(255,255,255,.08);
+            white-space: nowrap;
+        }
+
+        .badge-current   { background: rgba(37,99,235,.22); }
+        .badge-upcoming  { background: rgba(217,119,6,.22); }
+        .badge-finished  { background: rgba(22,163,74,.22); }
+        .badge-draft     { background: rgba(100,116,139,.22); }
+        .badge-published { background: rgba(22,163,74,.22); }
+
+        .inline-form {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(120px,1fr));
+            gap: 8px;
+            align-items: end;
+        }
+
+        .inline-form-compact {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(100px,1fr));
+            gap: 8px;
+            align-items: end;
+        }
+
+        .muted {
+            opacity: .8;
+            font-size: 13px;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        @media (max-width: 1200px) {
+            .stats-grid { grid-template-columns: repeat(2,1fr); }
+            .two-col,
+            .form-grid,
+            .form-grid-3,
+            .inline-form,
+            .inline-form-compact {
+                grid-template-columns: 1fr;
             }
+        }
+
+        @media (max-width: 700px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            .overlay { padding: 16px; }
+            .header-card h1 { font-size: 24px; }
         }
     </style>
 </head>
 <body>
+<div class="overlay">
+    <div class="container">
 
-
-
-@php
-    $defaultSponsorOptions = [
-        'Puma','Nike','Spotify','Adidas',
-        'Emirates','Etihad Airways','Qatar Airways',
-        'Rakuten','AIA','Standard Chartered',
-        'Three','Vodafone','Chevrolet',
-        'New Balance','Umbro','Castore'
-    ];
-
-    $finalSponsorOptions = (isset($sponsorOptions) && is_array($sponsorOptions) && count($sponsorOptions))
-        ? $sponsorOptions
-        : $defaultSponsorOptions;
-
-    $playerPositions = [
-        'Goalkeeper',
-        'Defender',
-        'Midfielder',
-        'Forward'
-    ];
-@endphp
-
-<div class="page-wrap">
-
-    <div class="toolbar">
-        <h1 style="margin:0;">Admin Match Manager</h1>
-
-        <div class="toolbar-actions">
-            <button type="button" id="workspaceToggle">Wide Workspace</button>
-            <button type="button" id="expandAllBtn">Expand All</button>
-            <button type="button" id="collapseAllBtn">Collapse All</button>
+        <div class="header-card">
+            <h1>Fantasy Premier League Admin Panel</h1>
+            <p>Manage matches, teams, players, sponsors, managers, player market values, transfer posts, and standings from one page.</p>
         </div>
-    </div>
 
-    @if(session('success'))
-        <p class="success"><b>{{ session('success') }}</b></p>
-    @endif
+        @if(session('success'))
+            <div class="alert alert-success">
+                {{ session('success') }}
+            </div>
+        @endif
 
-    @if($errors->any())
-        <div class="error-box">
-            <p class="error" style="margin:0 0 6px;"><b>Validation Errors:</b></p>
-            <ul style="margin:0; padding-left:18px;">
-                @foreach($errors->all() as $err)
-                    <li class="error">{{ $err }}</li>
-                @endforeach
-            </ul>
+        @if($errors->any())
+            <div class="alert alert-error">
+                <strong>Please fix these issues:</strong>
+                <ul style="margin:8px 0 0 18px;">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Current Matches</div>
+                <div class="stat-value">{{ $matchStats['current'] ?? 0 }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Upcoming Matches</div>
+                <div class="stat-value">{{ $matchStats['upcoming'] ?? 0 }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Finished Matches</div>
+                <div class="stat-value">{{ $matchStats['finished'] ?? 0 }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Teams / Players</div>
+                <div class="stat-value">{{ count($teams) }} / {{ count($players) }}</div>
+            </div>
         </div>
-    @endif
 
-    <div id="adminShell" class="admin-shell">
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="matches">Matches</button>
+            <button class="tab-btn" data-tab="teams">Teams</button>
+            <button class="tab-btn" data-tab="players">Players</button>
+            <button class="tab-btn" data-tab="sponsors">Sponsors</button>
+            <button class="tab-btn" data-tab="managers">Managers</button>
+            <button class="tab-btn" data-tab="market-values">Market Values</button>
+            <button class="tab-btn" data-tab="transfers">Transfers</button>
+            <button class="tab-btn" data-tab="standings">Standings</button>
+        </div>
 
-        {{-- -------------------- ADD TEAM -------------------- --}}
-        <details class="panel" open>
-            <summary>Add New Team</summary>
-            <div class="panel-body">
-                <form method="POST" action="{{ route('admin.team.create') }}">
-                    @csrf
+        {{-- MATCHES --}}
+        <div class="tab-section active" id="tab-matches">
+            <div class="two-col">
+                <div class="form-card">
+                    <h3 class="card-title">Add Match</h3>
+                    <p class="small-note">Create future, current, or finished matches.</p>
 
-                    <label>Team Name</label>
-                    <input type="text" name="team_name" value="{{ old('team_name') }}" placeholder="e.g. Manchester United" required>
-
-                    <div class="grid-2">
-                        <div>
-                            <label>Strength (optional)</label>
-                            <input type="number" name="strength" value="{{ old('strength') }}" placeholder="e.g. 80">
-                        </div>
-
-                        <div>
-                            <label>Manager ID (optional)</label>
-                            <input type="number" name="manager_id" value="{{ old('manager_id') }}" placeholder="e.g. 1">
-                        </div>
-                    </div>
-
-                    <div class="grid-2">
-                        <div>
-                            <label>Goals Scored (optional)</label>
-                            <input type="number" name="goals_scored" value="{{ old('goals_scored') }}" placeholder="e.g. 0">
-                        </div>
-
-                        <div>
-                            <label>Goals Conceded (optional)</label>
-                            <input type="number" name="goals_conceded" value="{{ old('goals_conceded') }}" placeholder="e.g. 0">
-                        </div>
-                    </div>
-
-                    <button type="submit">Add Team</button>
-                </form>
-            </div>
-        </details>
-
-        {{-- -------------------- SPONSOR ADMIN -------------------- --}}
-        <details class="panel" open>
-            <summary>Sponsor Admin</summary>
-            <div class="panel-body">
-                <p class="hint">Assign a sponsor to a team using dropdowns.</p>
-
-                @if(($teams ?? collect())->count() == 0)
-                    <p class="error"><b>No teams found.</b> Add teams first, then assign sponsors.</p>
-                @else
-                    <form method="POST" action="{{ route('admin.sponsors.create') }}">
-                        @csrf
-                        <input type="hidden" name="redirect_to" value="{{ url()->current() }}">
-
-                        <label>Select Sponsor</label>
-                        <select name="sponsor_name" required>
-                            <option value="" disabled {{ old('sponsor_name') ? '' : 'selected' }}>Select sponsor</option>
-                            @foreach($finalSponsorOptions as $opt)
-                                <option value="{{ $opt }}" @selected(old('sponsor_name') === $opt)>{{ $opt }}</option>
-                            @endforeach
-                        </select>
-
-                        <label>Select Team</label>
-                        <select name="team_id" required>
-                            <option value="" disabled {{ old('team_id') ? '' : 'selected' }}>Select team</option>
-                            @foreach(($teams ?? collect()) as $t)
-                                <option value="{{ $t->team_id }}" @selected((string)old('team_id') === (string)$t->team_id)>
-                                    {{ $t->team_name ?? ('Team '.$t->team_id) }} (ID: {{ $t->team_id }})
-                                </option>
-                            @endforeach
-                        </select>
-
-                        <button type="submit">Assign Sponsor</button>
-                    </form>
-                @endif
-
-                @if(($sponsors ?? collect())->count())
-                    <h3 style="margin-top:18px;">Current Sponsor Assignments</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Sponsor ID</th>
-                                <th>Sponsor Name</th>
-                                <th>Team Name</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($sponsors as $s)
-                                <tr>
-                                    <td><span class="badge">{{ $s->sponsor_id }}</span></td>
-                                    <td>{{ $s->sponsor_name ?? 'N/A' }}</td>
-                                    <td>{{ $s->team_name ?? 'N/A' }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                @endif
-            </div>
-        </details>
-
-        {{-- -------------------- PLAYER ADMIN -------------------- --}}
-        <details class="panel" open>
-            <summary>Player Admin</summary>
-            <div class="panel-body">
-                <p class="hint">Add a player, assign a team, jersey number, nationality, and position.</p>
-
-                @if(($teams ?? collect())->count() == 0)
-                    <p class="error"><b>No teams found.</b> Add teams first, then add players.</p>
-                @else
-                    <form method="POST" action="{{ route('admin.player.create') }}">
-                        @csrf
-                        <input type="hidden" name="redirect_to" value="{{ url()->current() }}">
-
-                        <div class="grid-2">
-                            <div>
-                                <label>First Name</label>
-                                <input type="text" name="first_name" value="{{ old('first_name') }}" placeholder="e.g. Mohamed" required>
-                            </div>
-
-                            <div>
-                                <label>Last Name</label>
-                                <input type="text" name="last_name" value="{{ old('last_name') }}" placeholder="e.g. Salah">
-                            </div>
-                        </div>
-
-                        <div class="grid-2">
-                            <div>
-                                <label>Select Team</label>
-                                <select name="team_id" required>
-                                    <option value="" disabled {{ old('team_id') ? '' : 'selected' }}>Select team</option>
-                                    @foreach(($teams ?? collect()) as $t)
-                                        <option value="{{ $t->team_id }}" @selected((string)old('team_id') === (string)$t->team_id)>
-                                            {{ $t->team_name ?? ('Team '.$t->team_id) }} (ID: {{ $t->team_id }})
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div>
-                                <label>Jersey Number</label>
-                                <input type="number" name="jersey_number" value="{{ old('jersey_number') }}" min="1" max="99" placeholder="e.g. 10" required>
-                            </div>
-                        </div>
-
-                        <div class="grid-2">
-                            <div>
-                                <label>Nationality</label>
-                                <input type="text" name="nationality" value="{{ old('nationality') }}" placeholder="e.g. Egyptian" required>
-                            </div>
-
-                            <div>
-                                <label>Position</label>
-                                <select name="position" required>
-                                    <option value="" disabled {{ old('position') ? '' : 'selected' }}>Select position</option>
-                                    @foreach($playerPositions as $pos)
-                                        <option value="{{ $pos }}" @selected(old('position') === $pos)>
-                                            {{ $pos }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-
-                        <button type="submit">Add Player</button>
-                    </form>
-                @endif
-
-                @if(($players ?? collect())->count())
-                    <h3 style="margin-top:18px;">Current Players</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Player Name</th>
-                                <th>Team</th>
-                                <th>Jersey</th>
-                                <th>Nationality</th>
-                                <th>Position</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($players as $p)
-                                @php
-                                    $fullName = trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? ''));
-                                @endphp
-                                <tr>
-                                    <td>{{ $fullName !== '' ? $fullName : 'N/A' }}</td>
-                                    <td>{{ $p->team_name ?? 'N/A' }}</td>
-                                    <td><span class="badge">#{{ $p->jersey_number ?? 'N/A' }}</span></td>
-                                    <td>{{ $p->nationality ?? 'N/A' }}</td>
-                                    <td>{{ $p->position ?? 'N/A' }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                @endif
-            </div>
-        </details>
-
-        {{-- -------------------- CREATE MATCH -------------------- --}}
-        <details class="panel" open>
-            <summary>Create New Match</summary>
-            <div class="panel-body">
-                @if(($teams ?? collect())->count() == 0)
-                    <p class="error"><b>No teams found.</b> Add teams first, then create matches.</p>
-                @else
                     <form method="POST" action="{{ route('admin.match.create') }}">
                         @csrf
-
-                        <label>Team 1</label>
-                        <select name="team1" required>
-                            <option value="" disabled {{ old('team1') ? '' : 'selected' }}>Select Team 1</option>
-                            @foreach(($teams ?? collect()) as $t)
-                                <option value="{{ $t->team_id }}" @selected((string)old('team1') === (string)$t->team_id)>
-                                    {{ $t->team_name ?? ('Team '.$t->team_id) }} (ID: {{ $t->team_id }})
-                                </option>
-                            @endforeach
-                        </select>
-
-                        <label>Team 2</label>
-                        <select name="team2" required>
-                            <option value="" disabled {{ old('team2') ? '' : 'selected' }}>Select Team 2</option>
-                            @foreach(($teams ?? collect()) as $t)
-                                <option value="{{ $t->team_id }}" @selected((string)old('team2') === (string)$t->team_id)>
-                                    {{ $t->team_name ?? ('Team '.$t->team_id) }} (ID: {{ $t->team_id }})
-                                </option>
-                            @endforeach
-                        </select>
-
-                        <p class="hint">Team 1 and Team 2 should be different.</p>
-
-                        <label>Status</label>
-                        <select name="status" required>
-                            <option value="current" @selected(old('status') === 'current')>current</option>
-                            <option value="upcoming" @selected(old('status', 'upcoming') === 'upcoming')>upcoming</option>
-                            <option value="finished" @selected(old('status') === 'finished')>finished</option>
-                        </select>
-
-                        <label>Kickoff (YYYY-MM-DD HH:MM:SS)</label>
-                        <input type="text" name="kickoff_at" value="{{ old('kickoff_at') }}" placeholder="2026-02-20 18:00:00">
-
-                        <button type="submit">Create Match</button>
-                    </form>
-                @endif
-            </div>
-        </details>
-
-        {{-- -------------------- EDIT MATCHES -------------------- --}}
-        <details class="panel" open>
-            <summary>Edit Matches</summary>
-            <div class="panel-body">
-                @foreach($matches as $match)
-                    @php
-                        $matchId = $match->id ?? $match->match_id ?? null;
-                    @endphp
-
-                    <div class="card">
-                        <form method="POST" action="{{ route('admin.match.update') }}">
-                            @csrf
-
-                            <input type="hidden" name="id" value="{{ $matchId }}">
-
-                            <label>Team 1</label>
-                            <select name="team1" required>
-                                @foreach(($teams ?? collect()) as $t)
-                                    @php
-                                        $isSelected =
-                                            ((string)($match->team1 ?? '') === (string)$t->team_id) ||
-                                            ((string)($match->team1 ?? '') === (string)($t->team_name ?? ''));
-                                    @endphp
-                                    <option value="{{ $t->team_id }}" @selected($isSelected)>
-                                        {{ $t->team_name ?? ('Team '.$t->team_id) }} (ID: {{ $t->team_id }})
-                                    </option>
-                                @endforeach
-                            </select>
-
-                            <label>Team 2</label>
-                            <select name="team2" required>
-                                @foreach(($teams ?? collect()) as $t)
-                                    @php
-                                        $isSelected =
-                                            ((string)($match->team2 ?? '') === (string)$t->team_id) ||
-                                            ((string)($match->team2 ?? '') === (string)($t->team_name ?? ''));
-                                    @endphp
-                                    <option value="{{ $t->team_id }}" @selected($isSelected)>
-                                        {{ $t->team_name ?? ('Team '.$t->team_id) }} (ID: {{ $t->team_id }})
-                                    </option>
-                                @endforeach
-                            </select>
-
-                            <div class="grid-2">
-                                <div>
-                                    <label>Score 1</label>
-                                    <input type="number" name="score1" value="{{ $match->score1 ?? 0 }}">
-                                </div>
-
-                                <div>
-                                    <label>Score 2</label>
-                                    <input type="number" name="score2" value="{{ $match->score2 ?? 0 }}">
-                                </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Team A</label>
+                                <select name="team1" required>
+                                    <option value="">Select Team A</option>
+                                    @foreach($teams as $team)
+                                        <option value="{{ $team->team_id }}">{{ $team->team_name }}</option>
+                                    @endforeach
+                                </select>
                             </div>
 
-                            <label>Match Time</label>
-                            <input type="text" name="match_time" value="{{ $match->match_time ?? '' }}">
+                            <div class="form-group">
+                                <label>Team B</label>
+                                <select name="team2" required>
+                                    <option value="">Select Team B</option>
+                                    @foreach($teams as $team)
+                                        <option value="{{ $team->team_id }}">{{ $team->team_name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
 
+                            <div class="form-group">
+                                <label>Status</label>
+                                <select name="status" required>
+                                    <option value="upcoming">Upcoming</option>
+                                    <option value="current">Current</option>
+                                    <option value="finished">Finished</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Kickoff Date & Time</label>
+                                <input type="datetime-local" name="kickoff_at">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Match Time Label</label>
+                                <input type="text" name="match_time" placeholder="Example: FT, HT, 75', 18 Mar 8:00 PM">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Score Team A</label>
+                                <input type="number" name="score1" min="0" value="0">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Score Team B</label>
+                                <input type="number" name="score2" min="0" value="0">
+                            </div>
+                        </div>
+
+                        <div class="action-row">
+                            <button type="submit" class="btn btn-success">Create Match</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="form-card">
+                    <h3 class="card-title">Standings Tools</h3>
+                    <p class="small-note">Finished match results automatically affect standings.</p>
+
+                    <form method="POST" action="{{ route('admin.standings.recalculate') }}">
+                        @csrf
+                        <div class="action-row">
+                            <button type="submit" class="btn btn-warning">Recalculate Standings</button>
+                        </div>
+                    </form>
+
+                    <div class="muted" style="margin-top:14px;">
+                        <ul>
+                            <li>Only finished matches affect points.</li>
+                            <li>Winner is auto-calculated from scores.</li>
+                            <li>Win = 3 points, Draw = 1 point, Loss = 0 points.</li>
+                            <li>Goals scored, conceded, and goal difference are rebuilt from results.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <h3 class="card-title">Manage Matches</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Match</th>
+                                <th>Status</th>
+                                <th>Kickoff</th>
+                                <th>Score</th>
+                                <th>Update</th>
+                                <th>Delete</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @forelse($matches as $match)
+                            <tr>
+                                <td>{{ $match->id }}</td>
+                                <td><strong>{{ $match->team1_name }}</strong> vs <strong>{{ $match->team2_name }}</strong></td>
+                                <td><span class="badge badge-{{ $match->status }}">{{ ucfirst($match->status) }}</span></td>
+                                <td>{{ $match->kickoff_at ?? 'N/A' }}</td>
+                                <td>{{ $match->score1 }} - {{ $match->score2 }}</td>
+                                <td>
+                                    <form method="POST" action="{{ route('admin.match.update') }}">
+                                        @csrf
+                                        <input type="hidden" name="id" value="{{ $match->id }}">
+
+                                        <div class="inline-form">
+                                            <div class="form-group">
+                                                <label>Team A</label>
+                                                <select name="team1" required>
+                                                    @foreach($teams as $team)
+                                                        <option value="{{ $team->team_id }}" {{ (int)$team->team_id === (int)$match->team1_id ? 'selected' : '' }}>
+                                                            {{ $team->team_name }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>Team B</label>
+                                                <select name="team2" required>
+                                                    @foreach($teams as $team)
+                                                        <option value="{{ $team->team_id }}" {{ (int)$team->team_id === (int)$match->team2_id ? 'selected' : '' }}>
+                                                            {{ $team->team_name }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>Status</label>
+                                                <select name="status" required>
+                                                    <option value="upcoming" {{ $match->status === 'upcoming' ? 'selected' : '' }}>Upcoming</option>
+                                                    <option value="current" {{ $match->status === 'current' ? 'selected' : '' }}>Current</option>
+                                                    <option value="finished" {{ $match->status === 'finished' ? 'selected' : '' }}>Finished</option>
+                                                </select>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>Kickoff</label>
+                                                <input type="datetime-local" name="kickoff_at" value="{{ $match->kickoff_at ? \Carbon\Carbon::parse($match->kickoff_at)->format('Y-m-d\TH:i') : '' }}">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>Score A</label>
+                                                <input type="number" name="score1" min="0" value="{{ $match->score1 }}">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>Score B</label>
+                                                <input type="number" name="score2" min="0" value="{{ $match->score2 }}">
+                                            </div>
+
+                                            <div class="form-group full">
+                                                <label>Match Time Label</label>
+                                                <input type="text" name="match_time" value="{{ $match->match_time }}" placeholder="Example: FT, HT, 75'">
+                                            </div>
+                                        </div>
+
+                                        <div class="action-row">
+                                            <button type="submit" class="btn btn-primary">Update Match</button>
+                                        </div>
+                                    </form>
+                                </td>
+                                <td>
+                                    <form method="POST" action="{{ route('admin.match.delete') }}" onsubmit="return confirm('Delete this match?');">
+                                        @csrf
+                                        <input type="hidden" name="id" value="{{ $match->id }}">
+                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7">No matches found.</td>
+                            </tr>
+                        @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {{-- TEAMS --}}
+        <div class="tab-section" id="tab-teams">
+            <div class="two-col">
+                <div class="form-card">
+                    <h3 class="card-title">Add Team</h3>
+                    <form method="POST" action="{{ route('admin.team.create') }}">
+                        @csrf
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Team Name</label>
+                                <input type="text" name="team_name" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Strength</label>
+                                <input type="number" name="strength" min="0">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Goals Scored</label>
+                                <input type="number" name="goals_scored" min="0" value="0">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Goals Conceded</label>
+                                <input type="number" name="goals_conceded" min="0" value="0">
+                            </div>
+                        </div>
+
+                        <div class="action-row">
+                            <button type="submit" class="btn btn-success">Add Team</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="form-card">
+                    <h3 class="card-title">Team Notes</h3>
+                    <div class="muted">
+                        <ul>
+                            <li>Each team can have only one manager at a time.</li>
+                            <li>Deleting a team may fail if that team is still linked to matches or other records.</li>
+                            <li>Manager name shown here comes from the linked manager record.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <h3 class="card-title">Manage Teams</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Team</th>
+                                <th>Strength</th>
+                                <th>Goals</th>
+                                <th>Manager</th>
+                                <th>Update</th>
+                                <th>Delete</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @forelse($teams as $team)
+                            <tr>
+                                <td>{{ $team->team_id }}</td>
+                                <td><strong>{{ $team->team_name }}</strong></td>
+                                <td>{{ $team->strength ?? 'N/A' }}</td>
+                                <td>{{ $team->goals_scored ?? 0 }} / {{ $team->goals_conceded ?? 0 }}</td>
+                                <td>{{ $team->manager_name ?: 'Unassigned' }}</td>
+                                <td>
+                                    <form method="POST" action="{{ route('admin.team.update') }}">
+                                        @csrf
+                                        <input type="hidden" name="team_id" value="{{ $team->team_id }}">
+
+                                        <div class="inline-form-compact">
+                                            <div class="form-group">
+                                                <label>Name</label>
+                                                <input type="text" name="team_name" value="{{ $team->team_name }}" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Strength</label>
+                                                <input type="number" name="strength" min="0" value="{{ $team->strength }}">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Goals Scored</label>
+                                                <input type="number" name="goals_scored" min="0" value="{{ $team->goals_scored ?? 0 }}">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Goals Conceded</label>
+                                                <input type="number" name="goals_conceded" min="0" value="{{ $team->goals_conceded ?? 0 }}">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>&nbsp;</label>
+                                                <button type="submit" class="btn btn-primary">Update Team</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </td>
+                                <td>
+                                    <form method="POST" action="{{ route('admin.team.delete') }}" onsubmit="return confirm('Delete this team?');">
+                                        @csrf
+                                        <input type="hidden" name="team_id" value="{{ $team->team_id }}">
+                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7">No teams found.</td>
+                            </tr>
+                        @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {{-- PLAYERS --}}
+        <div class="tab-section" id="tab-players">
+            <div class="form-card">
+                <h3 class="card-title">Add Player</h3>
+                <form method="POST" action="{{ route('admin.player.create') }}">
+                    @csrf
+                    <div class="form-grid-3">
+                        <div class="form-group">
+                            <label>First Name</label>
+                            <input type="text" name="first_name" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Last Name</label>
+                            <input type="text" name="last_name">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Nationality</label>
+                            <input type="text" name="nationality" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Team</label>
+                            <select name="team_id" required>
+                                <option value="">Select Team</option>
+                                @foreach($teams as $team)
+                                    <option value="{{ $team->team_id }}">{{ $team->team_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Jersey Number</label>
+                            <input type="number" name="jersey_number" min="1" max="99" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Position</label>
+                            <select name="position" required>
+                                <option value="">Select Position</option>
+                                @foreach($playerPositions as $position)
+                                    <option value="{{ $position }}">{{ $position }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="action-row">
+                        <button type="submit" class="btn btn-success">Add Player</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="table-card">
+                <h3 class="card-title">Manage Players</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Player</th>
+                                <th>Team</th>
+                                <th>Jersey</th>
+                                <th>Position</th>
+                                <th>Nationality</th>
+                                <th>Update</th>
+                                <th>Delete</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @forelse($players as $player)
+                            <tr>
+                                <td><strong>{{ trim(($player->first_name ?? '') . ' ' . ($player->last_name ?? '')) }}</strong></td>
+                                <td>{{ $player->team_name }}</td>
+                                <td>#{{ $player->jersey_number }}</td>
+                                <td>{{ $player->position }}</td>
+                                <td>{{ $player->nationality }}</td>
+                                <td>
+                                    <form method="POST" action="{{ route('admin.player.update') }}">
+                                        @csrf
+                                        <input type="hidden" name="person_id" value="{{ $player->person_id }}">
+                                        <input type="hidden" name="old_team_id" value="{{ $player->team_id }}">
+                                        <input type="hidden" name="old_jersey_number" value="{{ $player->jersey_number }}">
+
+                                        <div class="inline-form">
+                                            <div class="form-group">
+                                                <label>First</label>
+                                                <input type="text" name="first_name" value="{{ $player->first_name }}" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Last</label>
+                                                <input type="text" name="last_name" value="{{ $player->last_name }}">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Nationality</label>
+                                                <input type="text" name="nationality" value="{{ $player->nationality }}" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Team</label>
+                                                <select name="team_id" required>
+                                                    @foreach($teams as $team)
+                                                        <option value="{{ $team->team_id }}" {{ (int)$team->team_id === (int)$player->team_id ? 'selected' : '' }}>
+                                                            {{ $team->team_name }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Jersey</label>
+                                                <input type="number" name="jersey_number" min="1" max="99" value="{{ $player->jersey_number }}" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Position</label>
+                                                <select name="position" required>
+                                                    @foreach($playerPositions as $position)
+                                                        <option value="{{ $position }}" {{ $position === $player->position ? 'selected' : '' }}>
+                                                            {{ $position }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="action-row">
+                                            <button type="submit" class="btn btn-primary">Update Player</button>
+                                        </div>
+                                    </form>
+                                </td>
+                                <td>
+                                    <form method="POST" action="{{ route('admin.player.delete') }}" onsubmit="return confirm('Delete this player?');">
+                                        @csrf
+                                        <input type="hidden" name="person_id" value="{{ $player->person_id }}">
+                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7">No players found.</td>
+                            </tr>
+                        @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {{-- SPONSORS --}}
+        <div class="tab-section" id="tab-sponsors">
+            <div class="two-col">
+                <div class="form-card">
+                    <h3 class="card-title">Assign Sponsor</h3>
+                    <form method="POST" action="{{ route('admin.sponsors.create') }}">
+                        @csrf
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Team</label>
+                                <select name="team_id" required>
+                                    <option value="">Select Team</option>
+                                    @foreach($teams as $team)
+                                        <option value="{{ $team->team_id }}">{{ $team->team_name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Sponsor</label>
+                                <select name="sponsor_name" required>
+                                    <option value="">Select Sponsor</option>
+                                    @foreach($sponsorOptions as $sponsorOption)
+                                        <option value="{{ $sponsorOption }}">{{ $sponsorOption }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="action-row">
+                            <button type="submit" class="btn btn-success">Assign Sponsor</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="form-card">
+                    <h3 class="card-title">Sponsor Rules</h3>
+                    <div class="muted">
+                        A sponsor cannot be assigned twice to the same team. Update or remove existing sponsor records below.
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <h3 class="card-title">Manage Sponsors</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Sponsor</th>
+                                <th>Team</th>
+                                <th>Update</th>
+                                <th>Delete</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @forelse($sponsors as $sponsor)
+                            <tr>
+                                <td>{{ $sponsor->sponsor_id }}</td>
+                                <td>{{ $sponsor->sponsor_name }}</td>
+                                <td>{{ $sponsor->team_name }}</td>
+                                <td>
+                                    <form method="POST" action="{{ route('admin.sponsors.update') }}">
+                                        @csrf
+                                        <input type="hidden" name="sponsor_id" value="{{ $sponsor->sponsor_id }}">
+                                        <div class="inline-form-compact">
+                                            <div class="form-group">
+                                                <label>Team</label>
+                                                <select name="team_id" required>
+                                                    @foreach($teams as $team)
+                                                        <option value="{{ $team->team_id }}" {{ (int)$team->team_id === (int)$sponsor->team_id ? 'selected' : '' }}>
+                                                            {{ $team->team_name }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Sponsor</label>
+                                                <select name="sponsor_name" required>
+                                                    @foreach($sponsorOptions as $sponsorOption)
+                                                        <option value="{{ $sponsorOption }}" {{ $sponsorOption === $sponsor->sponsor_name ? 'selected' : '' }}>
+                                                            {{ $sponsorOption }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>&nbsp;</label>
+                                                <button type="submit" class="btn btn-primary">Update Sponsor</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </td>
+                                <td>
+                                    <form method="POST" action="{{ route('admin.sponsors.delete') }}" onsubmit="return confirm('Delete this sponsor assignment?');">
+                                        @csrf
+                                        <input type="hidden" name="sponsor_id" value="{{ $sponsor->sponsor_id }}">
+                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5">No sponsors found.</td>
+                            </tr>
+                        @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {{-- MANAGERS --}}
+        <div class="tab-section" id="tab-managers">
+            <div class="two-col">
+                <div class="form-card">
+                    <h3 class="card-title">Assign Manager to Team</h3>
+                    <p class="small-note">Each team can have only one manager at a time.</p>
+
+                    <form method="POST" action="{{ route('admin.managers.create') }}">
+                        @csrf
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>First Name</label>
+                                <input type="text" name="first_name" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Last Name</label>
+                                <input type="text" name="last_name">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Nationality</label>
+                                <input type="text" name="nationality">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Experience Years</label>
+                                <input type="number" name="experience_years" min="0" value="0">
+                            </div>
+
+                            <div class="form-group full">
+                                <label>Team</label>
+                                <select name="team_id" required>
+                                    <option value="">Select Team</option>
+                                    @foreach($teams as $team)
+                                        <option value="{{ $team->team_id }}">
+                                            {{ $team->team_name }}{{ $team->manager_name ? ' (Current: ' . $team->manager_name . ')' : ' (No manager)' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="action-row">
+                            <button type="submit" class="btn btn-success">Assign Manager</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="form-card">
+                    <h3 class="card-title">Manager Rule</h3>
+                    <div class="muted">
+                        Assigning a new manager to a team will replace the current manager of that team automatically.
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <h3 class="card-title">Manage Managers</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Manager</th>
+                                <th>Team</th>
+                                <th>Nationality</th>
+                                <th>Experience</th>
+                                <th>Update</th>
+                                <th>Delete</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @forelse($managers as $manager)
+                            <tr>
+                                <td><strong>{{ trim(($manager->first_name ?? '') . ' ' . ($manager->last_name ?? '')) }}</strong></td>
+                                <td>{{ $manager->team_name ?? 'Unassigned' }}</td>
+                                <td>{{ $manager->nationality ?? 'N/A' }}</td>
+                                <td>{{ $manager->experience_years ?? 0 }} years</td>
+                                <td>
+                                    <form method="POST" action="{{ route('admin.managers.update') }}">
+                                        @csrf
+                                        <input type="hidden" name="person_id" value="{{ $manager->person_id }}">
+
+                                        <div class="form-grid">
+                                            <div class="form-group">
+                                                <label>First Name</label>
+                                                <input type="text" name="first_name" value="{{ $manager->first_name }}" required>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>Last Name</label>
+                                                <input type="text" name="last_name" value="{{ $manager->last_name }}">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>Nationality</label>
+                                                <input type="text" name="nationality" value="{{ $manager->nationality }}">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>Experience Years</label>
+                                                <input type="number" name="experience_years" min="0" value="{{ $manager->experience_years ?? 0 }}">
+                                            </div>
+
+                                            <div class="form-group full">
+                                                <label>Team</label>
+                                                <select name="team_id">
+                                                    <option value="">Unassigned</option>
+                                                    @foreach($teams as $team)
+                                                        <option value="{{ $team->team_id }}" {{ (int)($manager->team_id ?? 0) === (int)$team->team_id ? 'selected' : '' }}>
+                                                            {{ $team->team_name }}{{ $team->manager_name ? ' (Current: ' . $team->manager_name . ')' : ' (No manager)' }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="action-row">
+                                            <button type="submit" class="btn btn-primary">Update Manager</button>
+                                        </div>
+                                    </form>
+                                </td>
+                                <td>
+                                    <form method="POST" action="{{ route('admin.managers.delete') }}" onsubmit="return confirm('Delete this manager?');">
+                                        @csrf
+                                        <input type="hidden" name="person_id" value="{{ $manager->person_id }}">
+                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6">No managers found.</td>
+                            </tr>
+                        @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {{-- MARKET VALUES --}}
+        <div class="tab-section" id="tab-market-values">
+            <div class="form-card">
+                <h3 class="card-title">Add Player Market Value</h3>
+                <p class="small-note">Select the player directly from the dropdown.</p>
+
+                <form method="POST" action="{{ route('admin.market-values.create') }}">
+                    @csrf
+
+                    <input type="hidden" name="team_id">
+                    <input type="hidden" name="jersey_number">
+
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label>Player</label>
+                            <select class="player-select" required>
+                                <option value="">Select Player</option>
+                                @foreach($playerOptions as $playerOption)
+                                    <option value="{{ $playerOption->team_id }}|{{ $playerOption->jersey_number }}">
+                                        {{ $playerOption->team_name }} - {{ $playerOption->player_name }} (#{{ $playerOption->jersey_number }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Season</label>
+                            <input type="text" name="season" placeholder="Example: 2025/26" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Market Value</label>
+                            <input type="number" step="0.01" min="0" name="market_value" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Currency</label>
+                            <input type="text" name="currency" value="GBP" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Notes</label>
+                            <input type="text" name="notes" placeholder="Optional note">
+                        </div>
+                    </div>
+
+                    <div class="action-row">
+                        <button type="submit" class="btn btn-success">Add Market Value</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="table-card">
+                <h3 class="card-title">Manage Player Market Values</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Player</th>
+                                <th>Team</th>
+                                <th>Season</th>
+                                <th>Value</th>
+                                <th>Notes</th>
+                                <th>Update</th>
+                                <th>Delete</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @forelse($playerMarketValues as $row)
+                            <tr>
+                                <td>
+                                    <strong>{{ trim(($row->first_name ?? '') . ' ' . ($row->last_name ?? '')) }}</strong>
+                                    <span class="badge">#{{ $row->jersey_number }}</span>
+                                </td>
+                                <td>{{ $row->team_name }}</td>
+                                <td>{{ $row->season }}</td>
+                                <td>{{ $row->currency }} {{ number_format((float)$row->market_value, 2) }}</td>
+                                <td>{{ $row->notes ?: 'N/A' }}</td>
+                                <td>
+                                    <form method="POST" action="{{ route('admin.market-values.update') }}">
+                                        @csrf
+                                        <input type="hidden" name="player_market_value_id" value="{{ $row->player_market_value_id }}">
+                                        <input type="hidden" name="team_id" value="{{ $row->team_id }}">
+                                        <input type="hidden" name="jersey_number" value="{{ $row->jersey_number }}">
+
+                                        <div class="form-grid">
+                                            <div class="form-group full">
+                                                <label>Player</label>
+                                                <select class="player-select" required>
+                                                    <option value="">Select Player</option>
+                                                    @foreach($playerOptions as $playerOption)
+                                                        <option value="{{ $playerOption->team_id }}|{{ $playerOption->jersey_number }}"
+                                                            {{ ((int)$playerOption->team_id === (int)$row->team_id && (int)$playerOption->jersey_number === (int)$row->jersey_number) ? 'selected' : '' }}>
+                                                            {{ $playerOption->team_name }} - {{ $playerOption->player_name }} (#{{ $playerOption->jersey_number }})
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>Season</label>
+                                                <input type="text" name="season" value="{{ $row->season }}" required>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>Value</label>
+                                                <input type="number" step="0.01" min="0" name="market_value" value="{{ $row->market_value }}" required>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>Currency</label>
+                                                <input type="text" name="currency" value="{{ $row->currency }}" required>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>Notes</label>
+                                                <input type="text" name="notes" value="{{ $row->notes }}">
+                                            </div>
+                                        </div>
+
+                                        <div class="action-row">
+                                            <button type="submit" class="btn btn-primary">Update Value</button>
+                                        </div>
+                                    </form>
+                                </td>
+                                <td>
+                                    <form method="POST" action="{{ route('admin.market-values.delete') }}" onsubmit="return confirm('Delete this market value?');">
+                                        @csrf
+                                        <input type="hidden" name="player_market_value_id" value="{{ $row->player_market_value_id }}">
+                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7">No player market values found.</td>
+                            </tr>
+                        @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {{-- TRANSFERS --}}
+        <div class="tab-section" id="tab-transfers">
+            <div class="form-card">
+                <h3 class="card-title">Create Transfer News / Blog Post</h3>
+                <form method="POST" action="{{ route('admin.transfers.create') }}">
+                    @csrf
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label>Title</label>
+                            <input type="text" name="title" required>
+                        </div>
+
+                        <div class="form-group full">
+                            <label>Summary</label>
+                            <textarea name="summary" placeholder="Short summary for transfer list page"></textarea>
+                        </div>
+
+                        <div class="form-group full">
+                            <label>Content</label>
+                            <textarea name="content" placeholder="Full transfer content" required></textarea>
+                        </div>
+
+                        <div class="form-group">
                             <label>Status</label>
                             <select name="status" required>
-                                <option value="current" @selected(($match->status ?? '') === 'current')>current</option>
-                                <option value="upcoming" @selected(($match->status ?? '') === 'upcoming')>upcoming</option>
-                                <option value="finished" @selected(($match->status ?? '') === 'finished')>finished</option>
+                                <option value="published">Published</option>
+                                <option value="draft">Draft</option>
                             </select>
+                        </div>
 
-                            <label>Kickoff (YYYY-MM-DD HH:MM:SS)</label>
-                            <input type="text" name="kickoff_at" value="{{ $match->kickoff_at ?? '' }}">
-
-                            <button type="submit">Update Match</button>
-                        </form>
+                        <div class="form-group">
+                            <label>Posted At</label>
+                            <input type="datetime-local" name="posted_at">
+                        </div>
                     </div>
-                @endforeach
+
+                    <div class="action-row">
+                        <button type="submit" class="btn btn-success">Create Post</button>
+                    </div>
+                </form>
             </div>
-        </details>
+
+            <div class="table-card">
+                <h3 class="card-title">Manage Transfer Posts</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Status</th>
+                                <th>Posted</th>
+                                <th>Preview</th>
+                                <th>Update</th>
+                                <th>Delete</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @forelse($transferPosts as $post)
+                            <tr>
+                                <td><strong>{{ $post->title }}</strong></td>
+                                <td><span class="badge badge-{{ $post->status }}">{{ ucfirst($post->status) }}</span></td>
+                                <td>{{ $post->posted_at ?? $post->created_at ?? 'N/A' }}</td>
+                                <td>{{ \Illuminate\Support\Str::limit(strip_tags($post->summary ?: $post->content), 120) }}</td>
+                                <td>
+                                    <form method="POST" action="{{ route('admin.transfers.update') }}">
+                                        @csrf
+                                        <input type="hidden" name="transfer_post_id" value="{{ $post->transfer_post_id }}">
+
+                                        <div class="form-grid">
+                                            <div class="form-group full">
+                                                <label>Title</label>
+                                                <input type="text" name="title" value="{{ $post->title }}" required>
+                                            </div>
+
+                                            <div class="form-group full">
+                                                <label>Summary</label>
+                                                <textarea name="summary">{{ $post->summary }}</textarea>
+                                            </div>
+
+                                            <div class="form-group full">
+                                                <label>Content</label>
+                                                <textarea name="content" required>{{ $post->content }}</textarea>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>Status</label>
+                                                <select name="status" required>
+                                                    <option value="published" {{ $post->status === 'published' ? 'selected' : '' }}>Published</option>
+                                                    <option value="draft" {{ $post->status === 'draft' ? 'selected' : '' }}>Draft</option>
+                                                </select>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>Posted At</label>
+                                                <input type="datetime-local" name="posted_at" value="{{ $post->posted_at ? \Carbon\Carbon::parse($post->posted_at)->format('Y-m-d\TH:i') : '' }}">
+                                            </div>
+                                        </div>
+
+                                        <div class="action-row">
+                                            <button type="submit" class="btn btn-primary">Update Post</button>
+                                        </div>
+                                    </form>
+                                </td>
+                                <td>
+                                    <form method="POST" action="{{ route('admin.transfers.delete') }}" onsubmit="return confirm('Delete this transfer post?');">
+                                        @csrf
+                                        <input type="hidden" name="transfer_post_id" value="{{ $post->transfer_post_id }}">
+                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6">No transfer posts found.</td>
+                            </tr>
+                        @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {{-- STANDINGS --}}
+        <div class="tab-section" id="tab-standings">
+            <div class="table-card">
+                <h3 class="card-title">Current Standings</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Team</th>
+                                <th>Played</th>
+                                <th>Wins</th>
+                                <th>Draws</th>
+                                <th>Losses</th>
+                                <th>GF</th>
+                                <th>GA</th>
+                                <th>GD</th>
+                                <th>Points</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @forelse($standings as $index => $row)
+                            <tr>
+                                <td>{{ $index + 1 }}</td>
+                                <td><strong>{{ $row->team_name }}</strong></td>
+                                <td>{{ $row->played }}</td>
+                                <td>{{ $row->wins }}</td>
+                                <td>{{ $row->draws }}</td>
+                                <td>{{ $row->losses }}</td>
+                                <td>{{ $row->goals_scored }}</td>
+                                <td>{{ $row->goals_conceded }}</td>
+                                <td>{{ $row->goal_diff }}</td>
+                                <td><strong>{{ $row->points }}</strong></td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="10">No standings data available.</td>
+                            </tr>
+                        @endforelse
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="action-row" style="margin-top:16px;">
+                    <form method="POST" action="{{ route('admin.standings.recalculate') }}">
+                        @csrf
+                        <button type="submit" class="btn btn-warning">Recalculate Standings</button>
+                    </form>
+                </div>
+            </div>
+        </div>
 
     </div>
 </div>
 
 <script>
-    const adminShell = document.getElementById('adminShell');
-    const workspaceToggle = document.getElementById('workspaceToggle');
-    const expandAllBtn = document.getElementById('expandAllBtn');
-    const collapseAllBtn = document.getElementById('collapseAllBtn');
-    const panels = document.querySelectorAll('details.panel');
+document.addEventListener('DOMContentLoaded', function () {
+    const buttons = document.querySelectorAll('.tab-btn');
+    const sections = document.querySelectorAll('.tab-section');
 
-    workspaceToggle.addEventListener('click', function () {
-        adminShell.classList.toggle('wide');
+    function activateTab(tabName) {
+        buttons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tabName);
+        });
+
+        sections.forEach(section => {
+            section.classList.toggle('active', section.id === 'tab-' + tabName);
+        });
+    }
+
+    buttons.forEach(btn => {
+        btn.addEventListener('click', function () {
+            activateTab(this.dataset.tab);
+        });
     });
 
-    expandAllBtn.addEventListener('click', function () {
-        panels.forEach(panel => panel.open = true);
-    });
+    function syncPlayerSelect(selectEl) {
+        const form = selectEl.closest('form');
+        if (!form) return;
 
-    collapseAllBtn.addEventListener('click', function () {
-        panels.forEach(panel => panel.open = false);
+        const teamInput = form.querySelector('input[name="team_id"]');
+        const jerseyInput = form.querySelector('input[name="jersey_number"]');
+        if (!teamInput || !jerseyInput) return;
+
+        const value = selectEl.value || '';
+        if (!value.includes('|')) {
+            teamInput.value = '';
+            jerseyInput.value = '';
+            return;
+        }
+
+        const parts = value.split('|');
+        teamInput.value = parts[0] || '';
+        jerseyInput.value = parts[1] || '';
+    }
+
+    document.querySelectorAll('.player-select').forEach(selectEl => {
+        syncPlayerSelect(selectEl);
+
+        selectEl.addEventListener('change', function () {
+            syncPlayerSelect(this);
+        });
     });
+});
 </script>
-
 </body>
 </html>
