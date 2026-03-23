@@ -9,32 +9,47 @@ use Illuminate\Support\Facades\DB;
 class TeamController extends Controller
 {
     public function index(Request $request)
-{
-    $search = preg_replace('/\s+/', ' ', trim((string) $request->query('q', ''))) ?? '';
+    {
+        $managerStatus = (string) $request->query('manager_status', 'all');
+        $strengthOrder = (string) $request->query('strength_order', '');
 
-    $teams = collect(DB::select("
-        SELECT
-            t.team_id,
-            t.team_name,
-            t.strength,
-            COALESCE(t.goals_scored, 0) AS goals_scored,
-            COALESCE(t.goals_conceded, 0) AS goals_conceded,
-            TRIM(CONCAT(COALESCE(p.first_name, ''), ' ', COALESCE(p.last_name, ''))) AS manager_name
-        FROM teams t
-        LEFT JOIN managers m ON m.person_id = t.manager_id
-        LEFT JOIN persons p ON p.person_id = m.person_id
-        WHERE (? = '')
-           OR t.team_name LIKE ?
-           OR TRIM(CONCAT(COALESCE(p.first_name, ''), ' ', COALESCE(p.last_name, ''))) LIKE ?
-        ORDER BY t.team_name ASC
-    ", [
-        $search,
-        '%' . $search . '%',
-        '%' . $search . '%',
-    ]));
+        $teamsQuery = DB::table('teams as t')
+            ->leftJoin('managers as m', 'm.person_id', '=', 't.manager_id')
+            ->leftJoin('persons as p', 'p.person_id', '=', 'm.person_id')
+            ->selectRaw("
+                t.team_id,
+                t.team_name,
+                t.strength,
+                COALESCE(t.goals_scored, 0) AS goals_scored,
+                COALESCE(t.goals_conceded, 0) AS goals_conceded,
+                NULLIF(TRIM(CONCAT(COALESCE(p.first_name, ''), ' ', COALESCE(p.last_name, ''))), '') AS manager_name
+            ");
 
-    return view('teams', compact('teams', 'search'));
-}
+        if ($managerStatus === 'with_manager') {
+            $teamsQuery->whereNotNull('t.manager_id');
+        } elseif ($managerStatus === 'without_manager') {
+            $teamsQuery->whereNull('t.manager_id');
+        } else {
+            $managerStatus = 'all';
+        }
+
+        if ($strengthOrder === 'high_low') {
+            $teamsQuery->orderByRaw('CASE WHEN t.strength IS NULL THEN 1 ELSE 0 END ASC')
+                ->orderByDesc('t.strength')
+                ->orderBy('t.team_name');
+        } elseif ($strengthOrder === 'low_high') {
+            $teamsQuery->orderByRaw('CASE WHEN t.strength IS NULL THEN 1 ELSE 0 END ASC')
+                ->orderBy('t.strength')
+                ->orderBy('t.team_name');
+        } else {
+            $strengthOrder = '';
+            $teamsQuery->orderBy('t.team_name');
+        }
+
+        $teams = $teamsQuery->get();
+
+        return view('teams', compact('teams', 'managerStatus', 'strengthOrder'));
+    }
 
     public function show(int $teamId)
     {
@@ -278,10 +293,10 @@ class TeamController extends Controller
         ]);
 
         try {
-            DB::delete('DELETE FROM teams WHERE team_id = ?', [$request->team_id]);
+            DB::delete("DELETE FROM teams WHERE team_id = ?", [$request->team_id]);
         } catch (QueryException $e) {
             return redirect()->route('admin.panel')
-                ->withErrors(['team_delete' => 'This team cannot be deleted because it is still linked to other records, most likely matches.'])
+                ->withErrors(['team_delete' => 'This team cannot be deleted because it is linked to other records. Remove related matches, players, sponsors, or manager first.'])
                 ->withInput();
         }
 

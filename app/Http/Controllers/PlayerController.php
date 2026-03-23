@@ -8,40 +8,94 @@ use Illuminate\Support\Facades\DB;
 class PlayerController extends Controller
 {
     public function index(Request $request)
-{
-    $search = preg_replace('/\s+/', ' ', trim((string) $request->query('q', ''))) ?? '';
+    {
+        $playerSearch = preg_replace('/\s+/', ' ', trim((string) $request->query('player_search', $request->query('q', '')))) ?? '';
+        $teamId = $request->query('team_id');
+        $position = (string) $request->query('position', '');
+        $nationality = (string) $request->query('nationality', '');
+        $sortBy = (string) $request->query('sort_by', 'team');
 
-    $players = DB::table('players as p')
-        ->join('persons as pe', 'pe.person_id', '=', 'p.person_id')
-        ->join('teams as t', 't.team_id', '=', 'p.team_id')
-        ->select(
-            'p.team_id',
-            'p.jersey_number',
-            'p.person_id',
-            'p.position',
-            't.team_name',
-            'pe.first_name',
-            'pe.last_name',
-            'pe.nationality'
-        )
-        ->when($search !== '', function ($query) use ($search) {
-            $like = '%' . $search . '%';
+        $playersQuery = DB::table('players as p')
+            ->join('teams as t', 't.team_id', '=', 'p.team_id')
+            ->join('persons as pe', 'pe.person_id', '=', 'p.person_id')
+            ->select(
+                'p.team_id',
+                'p.jersey_number',
+                'p.person_id',
+                'p.position',
+                't.team_name',
+                'pe.first_name',
+                'pe.last_name',
+                'pe.nationality'
+            );
 
-            $query->where(function ($subQuery) use ($like) {
-                $subQuery->where('pe.first_name', 'like', $like)
+        if ($playerSearch !== '') {
+            $like = '%' . $playerSearch . '%';
+
+            $playersQuery->where(function ($query) use ($like) {
+                $query->where('pe.first_name', 'like', $like)
                     ->orWhere('pe.last_name', 'like', $like)
-                    ->orWhereRaw("CONCAT(COALESCE(pe.first_name, ''), ' ', COALESCE(pe.last_name, '')) LIKE ?", [$like])
-                    ->orWhere('t.team_name', 'like', $like)
-                    ->orWhere('pe.nationality', 'like', $like)
-                    ->orWhere('p.position', 'like', $like);
+                    ->orWhereRaw("CONCAT(COALESCE(pe.first_name, ''), ' ', COALESCE(pe.last_name, '')) LIKE ?", [$like]);
             });
-        })
-        ->orderBy('t.team_name')
-        ->orderBy('p.jersey_number')
-        ->get();
+        }
 
-    return view('players', compact('players', 'search'));
-}
+        if ($teamId !== null && $teamId !== '') {
+            $playersQuery->where('p.team_id', $teamId);
+        } else {
+            $teamId = '';
+        }
+
+        if ($position !== '') {
+            $playersQuery->where('p.position', $position);
+        }
+
+        if ($nationality !== '') {
+            $playersQuery->where('pe.nationality', $nationality);
+        }
+
+        switch ($sortBy) {
+            case 'name':
+                $playersQuery->orderBy('pe.first_name')->orderBy('pe.last_name')->orderBy('t.team_name');
+                break;
+            case 'jersey':
+                $playersQuery->orderBy('p.jersey_number')->orderBy('t.team_name');
+                break;
+            default:
+                $sortBy = 'team';
+                $playersQuery->orderBy('t.team_name')->orderBy('p.jersey_number')->orderBy('pe.first_name')->orderBy('pe.last_name');
+                break;
+        }
+
+        $players = $playersQuery->get();
+
+        $teams = DB::table('teams')->select('team_id', 'team_name')->orderBy('team_name')->get();
+        $positions = DB::table('players')
+            ->whereNotNull('position')
+            ->where('position', '!=', '')
+            ->distinct()
+            ->orderBy('position')
+            ->pluck('position');
+
+        $nationalities = DB::table('players as p')
+            ->join('persons as pe', 'pe.person_id', '=', 'p.person_id')
+            ->whereNotNull('pe.nationality')
+            ->where('pe.nationality', '!=', '')
+            ->distinct()
+            ->orderBy('pe.nationality')
+            ->pluck('pe.nationality');
+
+        return view('players', compact(
+            'players',
+            'playerSearch',
+            'teamId',
+            'position',
+            'nationality',
+            'sortBy',
+            'teams',
+            'positions',
+            'nationalities'
+        ));
+    }
 
     public function store(Request $request)
     {

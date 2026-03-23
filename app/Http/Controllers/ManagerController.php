@@ -8,39 +8,59 @@ use Illuminate\Support\Facades\DB;
 class ManagerController extends Controller
 {
     public function index(Request $request)
-{
-    $search = preg_replace('/\s+/', ' ', trim((string) $request->query('q', ''))) ?? '';
+    {
+        $teamId = $request->query('team_id');
+        $nationality = (string) $request->query('nationality', '');
+        $experienceOrder = (string) $request->query('experience_order', 'team');
 
-    $managers = collect(DB::select("
-        SELECT
-            m.person_id,
-            m.team_id,
-            m.experience_years,
-            p.first_name,
-            p.last_name,
-            p.nationality,
-            t.team_name
-        FROM managers m
-        JOIN persons p ON p.person_id = m.person_id
-        LEFT JOIN teams t ON t.team_id = m.team_id
-        WHERE (? = '')
-           OR p.first_name LIKE ?
-           OR p.last_name LIKE ?
-           OR CONCAT(COALESCE(p.first_name, ''), ' ', COALESCE(p.last_name, '')) LIKE ?
-           OR COALESCE(p.nationality, '') LIKE ?
-           OR COALESCE(t.team_name, '') LIKE ?
-        ORDER BY t.team_name ASC, p.first_name ASC, p.last_name ASC
-    ", [
-        $search,
-        '%' . $search . '%',
-        '%' . $search . '%',
-        '%' . $search . '%',
-        '%' . $search . '%',
-        '%' . $search . '%',
-    ]));
+        $managersQuery = DB::table('managers as m')
+            ->join('persons as p', 'p.person_id', '=', 'm.person_id')
+            ->leftJoin('teams as t', 't.team_id', '=', 'm.team_id')
+            ->select(
+                'm.person_id',
+                'm.team_id',
+                'm.experience_years',
+                'p.first_name',
+                'p.last_name',
+                'p.nationality',
+                't.team_name'
+            );
 
-    return view('managers', compact('managers', 'search'));
-}
+        if ($teamId !== null && $teamId !== '') {
+            $managersQuery->where('m.team_id', $teamId);
+        } else {
+            $teamId = '';
+        }
+
+        if ($nationality !== '') {
+            $managersQuery->where('p.nationality', $nationality);
+        }
+
+        if ($experienceOrder === 'high_low') {
+            $managersQuery->orderByRaw('CASE WHEN m.experience_years IS NULL THEN 1 ELSE 0 END ASC')
+                ->orderByDesc('m.experience_years')
+                ->orderBy('t.team_name')
+                ->orderBy('p.first_name')
+                ->orderBy('p.last_name');
+        } else {
+            $experienceOrder = 'team';
+            $managersQuery->orderBy('t.team_name')
+                ->orderBy('p.first_name')
+                ->orderBy('p.last_name');
+        }
+
+        $managers = $managersQuery->get();
+        $teams = DB::table('teams')->select('team_id', 'team_name')->orderBy('team_name')->get();
+        $nationalities = DB::table('managers as m')
+            ->join('persons as p', 'p.person_id', '=', 'm.person_id')
+            ->whereNotNull('p.nationality')
+            ->where('p.nationality', '!=', '')
+            ->distinct()
+            ->orderBy('p.nationality')
+            ->pluck('p.nationality');
+
+        return view('managers', compact('managers', 'teams', 'nationalities', 'teamId', 'nationality', 'experienceOrder'));
+    }
 
     public function store(Request $request)
     {

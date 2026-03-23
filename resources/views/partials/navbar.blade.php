@@ -455,7 +455,6 @@
 
       <a href="{{ url('/') }}" class="brand">
         <div class="title">Fantasy Premier League</div>
-        <div class="subtitle">Match • Results • Standings • Teams</div>
       </a>
     </div>
 
