@@ -31,29 +31,43 @@ class SponsorController extends Controller
     }
 
     public function index(Request $request)
-{
-    $search = preg_replace('/\s+/', ' ', trim((string) $request->query('q', ''))) ?? '';
+    {
+        $teamId = $request->query('team_id');
+        $sponsorName = (string) $request->query('sponsor_name', '');
+        $sortBy = (string) $request->query('sort_by', 'team');
 
-    $sponsors = collect(DB::select("
-        SELECT
-            s.sponsor_id,
-            s.sponsor_name,
-            t.team_id,
-            t.team_name
-        FROM sponsors s
-        JOIN teams t ON t.team_id = s.team_id
-        WHERE (? = '')
-           OR s.sponsor_name LIKE ?
-           OR t.team_name LIKE ?
-        ORDER BY t.team_name ASC, s.sponsor_name ASC
-    ", [
-        $search,
-        '%' . $search . '%',
-        '%' . $search . '%',
-    ]));
+        $sponsorsQuery = DB::table('sponsors as s')
+            ->join('teams as t', 't.team_id', '=', 's.team_id')
+            ->select('s.sponsor_id', 's.sponsor_name', 't.team_id', 't.team_name');
 
-    return view('sponsors', compact('sponsors', 'search'));
-}
+        if ($teamId !== null && $teamId !== '') {
+            $sponsorsQuery->where('t.team_id', $teamId);
+        } else {
+            $teamId = '';
+        }
+
+        if ($sponsorName !== '') {
+            $sponsorsQuery->where('s.sponsor_name', $sponsorName);
+        }
+
+        if ($sortBy === 'sponsor') {
+            $sponsorsQuery->orderBy('s.sponsor_name')->orderBy('t.team_name');
+        } else {
+            $sortBy = 'team';
+            $sponsorsQuery->orderBy('t.team_name')->orderBy('s.sponsor_name');
+        }
+
+        $sponsors = $sponsorsQuery->get();
+        $teams = DB::table('teams')->select('team_id', 'team_name')->orderBy('team_name')->get();
+        $sponsorNames = DB::table('sponsors')
+            ->whereNotNull('sponsor_name')
+            ->where('sponsor_name', '!=', '')
+            ->distinct()
+            ->orderBy('sponsor_name')
+            ->pluck('sponsor_name');
+
+        return view('sponsors', compact('sponsors', 'teams', 'sponsorNames', 'teamId', 'sponsorName', 'sortBy'));
+    }
 
     public function admin()
     {

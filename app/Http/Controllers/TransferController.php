@@ -8,36 +8,52 @@ use Illuminate\Support\Facades\DB;
 class TransferController extends Controller
 {
     public function index(Request $request)
-{
-    $search = preg_replace('/\s+/', ' ', trim((string) $request->query('q', ''))) ?? '';
+    {
+        $year = (string) $request->query('year', '');
+        $month = (string) $request->query('month', '');
+        $sortBy = (string) $request->query('sort_by', 'latest');
 
-    $posts = collect(DB::select("
-        SELECT
-            transfer_post_id,
-            title,
-            summary,
-            content,
-            status,
-            posted_at,
-            created_at
-        FROM transfer_posts
-        WHERE status = 'published'
-          AND (
-                (? = '')
-                OR title LIKE ?
-                OR COALESCE(summary, '') LIKE ?
-                OR content LIKE ?
-              )
-        ORDER BY COALESCE(posted_at, created_at) DESC, transfer_post_id DESC
-    ", [
-        $search,
-        '%' . $search . '%',
-        '%' . $search . '%',
-        '%' . $search . '%',
-    ]));
+        $postsQuery = DB::table('transfer_posts')
+            ->select(
+                'transfer_post_id',
+                'title',
+                'summary',
+                'content',
+                'status',
+                'posted_at',
+                'created_at'
+            )
+            ->where('status', 'published');
 
-    return view('transfers', compact('posts', 'search'));
-}
+        if ($year !== '') {
+            $postsQuery->whereRaw('YEAR(COALESCE(posted_at, created_at)) = ?', [$year]);
+        }
+
+        if ($month !== '') {
+            $postsQuery->whereRaw('MONTH(COALESCE(posted_at, created_at)) = ?', [$month]);
+        }
+
+        if ($sortBy === 'oldest') {
+            $postsQuery->orderByRaw('COALESCE(posted_at, created_at) ASC')
+                ->orderBy('transfer_post_id');
+        } else {
+            $sortBy = 'latest';
+            $postsQuery->orderByRaw('COALESCE(posted_at, created_at) DESC')
+                ->orderByDesc('transfer_post_id');
+        }
+
+        $posts = $postsQuery->get();
+
+        $years = DB::table('transfer_posts')
+            ->where('status', 'published')
+            ->selectRaw('YEAR(COALESCE(posted_at, created_at)) AS year_value')
+            ->whereRaw('COALESCE(posted_at, created_at) IS NOT NULL')
+            ->distinct()
+            ->orderByDesc('year_value')
+            ->pluck('year_value');
+
+        return view('transfers', compact('posts', 'years', 'year', 'month', 'sortBy'));
+    }
 
     public function show(int $id)
     {

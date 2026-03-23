@@ -8,48 +8,84 @@ use Illuminate\Support\Facades\DB;
 class MarketValueController extends Controller
 {
     public function index(Request $request)
-{
-    $search = preg_replace('/\s+/', ' ', trim((string) $request->query('q', ''))) ?? '';
+    {
+        $teamId = $request->query('team_id');
+        $season = (string) $request->query('season', '');
+        $position = (string) $request->query('position', '');
+        $sortBy = (string) $request->query('sort_by', 'value_desc');
 
-    $marketValues = collect(DB::select("
-        SELECT
-            pmv.player_market_value_id,
-            pmv.season,
-            pmv.market_value,
-            pmv.currency,
-            pmv.notes,
-            pmv.team_id,
-            pmv.jersey_number,
-            t.team_name,
-            p.first_name,
-            p.last_name,
-            pl.position
-        FROM player_market_values pmv
-        JOIN players pl ON pl.team_id = pmv.team_id AND pl.jersey_number = pmv.jersey_number
-        JOIN persons p ON p.person_id = pl.person_id
-        JOIN teams t ON t.team_id = pmv.team_id
-        WHERE (? = '')
-           OR p.first_name LIKE ?
-           OR p.last_name LIKE ?
-           OR CONCAT(COALESCE(p.first_name, ''), ' ', COALESCE(p.last_name, '')) LIKE ?
-           OR t.team_name LIKE ?
-           OR COALESCE(pl.position, '') LIKE ?
-           OR pmv.season LIKE ?
-           OR COALESCE(pmv.notes, '') LIKE ?
-        ORDER BY pmv.season DESC, pmv.market_value DESC, t.team_name ASC, pmv.jersey_number ASC
-    ", [
-        $search,
-        '%' . $search . '%',
-        '%' . $search . '%',
-        '%' . $search . '%',
-        '%' . $search . '%',
-        '%' . $search . '%',
-        '%' . $search . '%',
-        '%' . $search . '%',
-    ]));
+        $marketValuesQuery = DB::table('player_market_values as pmv')
+            ->join('players as pl', function ($join) {
+                $join->on('pl.team_id', '=', 'pmv.team_id')
+                    ->on('pl.jersey_number', '=', 'pmv.jersey_number');
+            })
+            ->join('persons as p', 'p.person_id', '=', 'pl.person_id')
+            ->join('teams as t', 't.team_id', '=', 'pmv.team_id')
+            ->select(
+                'pmv.player_market_value_id',
+                'pmv.season',
+                'pmv.market_value',
+                'pmv.currency',
+                'pmv.notes',
+                'pmv.team_id',
+                'pmv.jersey_number',
+                't.team_name',
+                'p.first_name',
+                'p.last_name',
+                'pl.position'
+            );
 
-    return view('market-values', compact('marketValues', 'search'));
-}
+        if ($teamId !== null && $teamId !== '') {
+            $marketValuesQuery->where('pmv.team_id', $teamId);
+        } else {
+            $teamId = '';
+        }
+
+        if ($season !== '') {
+            $marketValuesQuery->where('pmv.season', $season);
+        }
+
+        if ($position !== '') {
+            $marketValuesQuery->where('pl.position', $position);
+        }
+
+        switch ($sortBy) {
+            case 'value_asc':
+                $marketValuesQuery->orderBy('pmv.market_value')
+                    ->orderBy('t.team_name')
+                    ->orderBy('pmv.jersey_number');
+                break;
+            case 'season_desc':
+                $marketValuesQuery->orderByDesc('pmv.season')
+                    ->orderByDesc('pmv.market_value')
+                    ->orderBy('t.team_name');
+                break;
+            default:
+                $sortBy = 'value_desc';
+                $marketValuesQuery->orderByDesc('pmv.market_value')
+                    ->orderByDesc('pmv.season')
+                    ->orderBy('t.team_name')
+                    ->orderBy('pmv.jersey_number');
+                break;
+        }
+
+        $marketValues = $marketValuesQuery->get();
+        $teams = DB::table('teams')->select('team_id', 'team_name')->orderBy('team_name')->get();
+        $seasons = DB::table('player_market_values')
+            ->whereNotNull('season')
+            ->where('season', '!=', '')
+            ->distinct()
+            ->orderByDesc('season')
+            ->pluck('season');
+        $positions = DB::table('players')
+            ->whereNotNull('position')
+            ->where('position', '!=', '')
+            ->distinct()
+            ->orderBy('position')
+            ->pluck('position');
+
+        return view('market-values', compact('marketValues', 'teams', 'seasons', 'positions', 'teamId', 'season', 'position', 'sortBy'));
+    }
 
     public function store(Request $request)
     {
