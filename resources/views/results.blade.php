@@ -185,6 +185,16 @@
                             <div class="muted">Played: {{ $result->kickoff_at ?? 'N/A' }}</div>
                             <div class="teams">{{ $result->team1 ?? 'N/A' }} vs {{ $result->team2 ?? 'N/A' }}</div>
                             <div class="score">{{ $result->score1 ?? 0 }} - {{ $result->score2 ?? 0 }}</div>
+                            @if(!empty($result->team1_scorers_text) || !empty($result->team2_scorers_text))
+                                <div class="scorers">
+                                    @if(!empty($result->team1_scorers_text))
+                                        <div><strong>{{ $result->team1 ?? 'Team A' }}:</strong> {{ $result->team1_scorers_text }}</div>
+                                    @endif
+                                    @if(!empty($result->team2_scorers_text))
+                                        <div><strong>{{ $result->team2 ?? 'Team B' }}:</strong> {{ $result->team2_scorers_text }}</div>
+                                    @endif
+                                </div>
+                            @endif
                             <div class="muted">Match Time: <span class="badge">{{ $result->match_time ?: 'Not set' }}</span></div>
                         </div>
                     @endforeach
@@ -195,5 +205,6 @@
         </div>
     </div>
 </div>
+@include('partials.footer')
 </body>
 </html>

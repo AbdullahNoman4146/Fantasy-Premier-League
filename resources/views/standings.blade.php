@@ -208,5 +208,6 @@
         </div>
     </div>
 </div>
+@include('partials.footer')
 </body>
 </html>
