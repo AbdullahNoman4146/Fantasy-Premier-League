@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 
 class MatchController extends Controller
 {
@@ -35,6 +37,33 @@ class MatchController extends Controller
             'transferPosts',
             'sponsorLogos'
         ));
+    }
+
+    public function liveData()
+    {
+        $currentMatches = $this->getMatchesByStatus('current', 'm.kickoff_at DESC', 20)
+            ->map(function ($match) {
+                return [
+                    'match_id' => (int) $match->match_id,
+                    'team1' => $match->team1,
+                    'team2' => $match->team2,
+                    'kickoff_at' => $match->kickoff_at,
+                    'match_time' => $match->match_time,
+                    'status' => $match->status,
+                    'score1' => (int) ($match->score1 ?? 0),
+                    'score2' => (int) ($match->score2 ?? 0),
+                    'team1_scorers_text' => $match->team1_scorers_text ?? '',
+                    'team2_scorers_text' => $match->team2_scorers_text ?? '',
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'matches' => $currentMatches,
+            'count' => $currentMatches->count(),
+            'server_time' => now()->format('Y-m-d H:i:s'),
+        ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+          ->header('Pragma', 'no-cache');
     }
 
     public function fixtures(Request $request)
@@ -125,7 +154,7 @@ class MatchController extends Controller
                 break;
         }
 
-        $results = $resultsQuery->get();
+        $results = $this->attachGoalEventData($resultsQuery->get());
         $teams = $this->getTeamOptions();
 
         return view('results', compact('results', 'teams', 'teamId', 'resultType', 'sortBy'));
@@ -195,6 +224,17 @@ class MatchController extends Controller
 
     public function admin()
     {
+        $matchStatsRaw = DB::table('matches')
+            ->select('status', DB::raw('COUNT(*) AS total'))
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $matchStats = [
+            'current' => (int) ($matchStatsRaw['current'] ?? 0),
+            'upcoming' => (int) ($matchStatsRaw['upcoming'] ?? 0),
+            'finished' => (int) ($matchStatsRaw['finished'] ?? 0),
+        ];
+
         $teams = collect(DB::select("
             SELECT
                 t.team_id,
@@ -203,7 +243,7 @@ class MatchController extends Controller
                 COALESCE(t.goals_scored, 0) AS goals_scored,
                 COALESCE(t.goals_conceded, 0) AS goals_conceded,
                 t.manager_id,
-                TRIM(CONCAT(COALESCE(p.first_name, ''), ' ', COALESCE(p.last_name, ''))) AS manager_name
+                NULLIF(TRIM(CONCAT(COALESCE(p.first_name, ''), ' ', COALESCE(p.last_name, ''))), '') AS manager_name
             FROM teams t
             LEFT JOIN managers m ON m.person_id = t.manager_id
             LEFT JOIN persons p ON p.person_id = m.person_id
@@ -285,13 +325,18 @@ class MatchController extends Controller
             ORDER BY s.sponsor_name ASC
         "));
 
-        $matches = collect(DB::select("
+        $matches = $this->attachGoalEventData(collect(DB::select("
             SELECT
                 m.match_id,
+                m.match_id AS id,
                 m.team_a_id,
+                m.team_a_id AS team1_id,
                 m.team_b_id,
+                m.team_b_id AS team2_id,
                 ta.team_name AS team1,
+                ta.team_name AS team1_name,
                 tb.team_name AS team2,
+                tb.team_name AS team2_name,
                 m.kickoff_at,
                 m.match_time,
                 m.status,
@@ -301,21 +346,39 @@ class MatchController extends Controller
             JOIN teams ta ON ta.team_id = m.team_a_id
             JOIN teams tb ON tb.team_id = m.team_b_id
             LEFT JOIN results r ON r.match_id = m.match_id
-            ORDER BY m.kickoff_at DESC, m.match_id DESC
-        "));
+            ORDER BY COALESCE(m.kickoff_at, m.created_at) DESC, m.match_id DESC
+        ")));
 
         $standings = collect(DB::select("
             SELECT
+                t.team_id,
                 t.team_name,
                 COALESCE(s.played, 0) AS played,
                 COALESCE(s.wins, 0) AS wins,
                 COALESCE(s.draws, 0) AS draws,
                 COALESCE(s.losses, 0) AS losses,
+                COALESCE(t.goals_scored, 0) AS goals_scored,
+                COALESCE(t.goals_conceded, 0) AS goals_conceded,
                 COALESCE(s.goal_diff, 0) AS goal_diff,
                 COALESCE(s.points, 0) AS points
             FROM teams t
             LEFT JOIN standings s ON s.team_id = t.team_id
-            ORDER BY COALESCE(s.points, 0) DESC, COALESCE(s.goal_diff, 0) DESC, t.team_name ASC
+            ORDER BY COALESCE(s.points, 0) DESC, COALESCE(s.goal_diff, 0) DESC, COALESCE(t.goals_scored, 0) DESC, t.team_name ASC
+        "));
+
+        $playerPositions = $this->playerPositions();
+        $sponsorOptions = $this->sponsorOptions();
+
+        $playerOptions = collect(DB::select("
+            SELECT
+                p.team_id,
+                p.jersey_number,
+                t.team_name,
+                TRIM(CONCAT(COALESCE(pe.first_name, ''), ' ', COALESCE(pe.last_name, ''))) AS player_name
+            FROM players p
+            JOIN persons pe ON pe.person_id = p.person_id
+            JOIN teams t ON t.team_id = p.team_id
+            ORDER BY t.team_name ASC, p.jersey_number ASC
         "));
 
         return view('admin.match', compact(
@@ -326,182 +389,148 @@ class MatchController extends Controller
             'transferPosts',
             'sponsors',
             'matches',
-            'standings'
+            'standings',
+            'matchStats',
+            'playerPositions',
+            'sponsorOptions',
+            'playerOptions'
         ));
     }
 
     public function create(Request $request)
     {
+        $payload = $this->matchPayload($request, false);
+
+        $request->merge($payload);
         $request->validate([
             'team_a_id' => ['required', 'different:team_b_id', 'exists:teams,team_id'],
             'team_b_id' => ['required', 'different:team_a_id', 'exists:teams,team_id'],
-            'kickoff_at' => ['required', 'date'],
+            'kickoff_at' => ['nullable', 'date'],
             'match_time' => ['nullable', 'string', 'max:50'],
             'status' => ['required', 'in:upcoming,current,finished'],
             'score_a' => ['nullable', 'integer', 'min:0'],
             'score_b' => ['nullable', 'integer', 'min:0'],
+            'team_a_scorers' => ['nullable', 'string', 'max:1000'],
+            'team_b_scorers' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $matchId = DB::table('matches')->insertGetId([
-            'team_a_id' => $request->team_a_id,
-            'team_b_id' => $request->team_b_id,
-            'kickoff_at' => $request->kickoff_at,
-            'match_time' => $request->match_time,
-            'status' => $request->status,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        [$teamAGoalEvents, $teamBGoalEvents] = $this->parseGoalEventPayload($payload);
 
-        if ($request->status === 'finished') {
-            DB::table('results')->updateOrInsert(
-                ['match_id' => $matchId],
-                [
-                    'score_a' => $request->score_a ?? 0,
-                    'score_b' => $request->score_b ?? 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]
-            );
-        }
+        DB::transaction(function () use ($payload, $teamAGoalEvents, $teamBGoalEvents) {
+            $matchId = DB::table('matches')->insertGetId([
+                'team_a_id' => $payload['team_a_id'],
+                'team_b_id' => $payload['team_b_id'],
+                'kickoff_at' => $payload['kickoff_at'],
+                'match_time' => $payload['match_time'],
+                'status' => $payload['status'],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            if ($this->shouldPersistResult($payload['status'])) {
+                $this->syncResult($matchId, $payload['score_a'], $payload['score_b']);
+                $this->syncGoalEvents($matchId, $teamAGoalEvents, $teamBGoalEvents);
+            } else {
+                DB::table('results')->where('match_id', $matchId)->delete();
+
+                if ($this->goalEventsEnabled()) {
+                    DB::table('match_goal_events')->where('match_id', $matchId)->delete();
+                }
+            }
+        });
+
+        $this->rebuildStandings();
 
         return redirect()->route('admin.panel')->with('success', 'Match created successfully.');
     }
 
     public function update(Request $request)
     {
+        $payload = $this->matchPayload($request, true);
+
+        $request->merge($payload);
         $request->validate([
             'match_id' => ['required', 'exists:matches,match_id'],
             'team_a_id' => ['required', 'different:team_b_id', 'exists:teams,team_id'],
             'team_b_id' => ['required', 'different:team_a_id', 'exists:teams,team_id'],
-            'kickoff_at' => ['required', 'date'],
+            'kickoff_at' => ['nullable', 'date'],
             'match_time' => ['nullable', 'string', 'max:50'],
             'status' => ['required', 'in:upcoming,current,finished'],
             'score_a' => ['nullable', 'integer', 'min:0'],
             'score_b' => ['nullable', 'integer', 'min:0'],
+            'team_a_scorers' => ['nullable', 'string', 'max:1000'],
+            'team_b_scorers' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        DB::table('matches')
-            ->where('match_id', $request->match_id)
-            ->update([
-                'team_a_id' => $request->team_a_id,
-                'team_b_id' => $request->team_b_id,
-                'kickoff_at' => $request->kickoff_at,
-                'match_time' => $request->match_time,
-                'status' => $request->status,
-                'updated_at' => now(),
-            ]);
+        [$teamAGoalEvents, $teamBGoalEvents] = $this->parseGoalEventPayload($payload);
 
-        if ($request->status === 'finished') {
-            DB::table('results')->updateOrInsert(
-                ['match_id' => $request->match_id],
-                [
-                    'score_a' => $request->score_a ?? 0,
-                    'score_b' => $request->score_b ?? 0,
+        DB::transaction(function () use ($payload, $teamAGoalEvents, $teamBGoalEvents) {
+            DB::table('matches')
+                ->where('match_id', $payload['match_id'])
+                ->update([
+                    'team_a_id' => $payload['team_a_id'],
+                    'team_b_id' => $payload['team_b_id'],
+                    'kickoff_at' => $payload['kickoff_at'],
+                    'match_time' => $payload['match_time'],
+                    'status' => $payload['status'],
                     'updated_at' => now(),
-                ]
-            );
-        } else {
-            DB::table('results')->where('match_id', $request->match_id)->delete();
-        }
+                ]);
+
+            if ($this->shouldPersistResult($payload['status'])) {
+                $this->syncResult((int) $payload['match_id'], $payload['score_a'], $payload['score_b']);
+                $this->syncGoalEvents((int) $payload['match_id'], $teamAGoalEvents, $teamBGoalEvents);
+            } else {
+                DB::table('results')->where('match_id', $payload['match_id'])->delete();
+
+                if ($this->goalEventsEnabled()) {
+                    DB::table('match_goal_events')->where('match_id', $payload['match_id'])->delete();
+                }
+            }
+        });
+
+        $this->rebuildStandings();
 
         return redirect()->route('admin.panel')->with('success', 'Match updated successfully.');
     }
 
     public function destroy(Request $request)
     {
+        $matchId = $request->input('match_id', $request->input('id'));
+        $request->merge(['match_id' => $matchId]);
+
         $request->validate([
             'match_id' => ['required', 'exists:matches,match_id'],
         ]);
 
-        DB::table('results')->where('match_id', $request->match_id)->delete();
-        DB::table('matches')->where('match_id', $request->match_id)->delete();
+        DB::transaction(function () use ($matchId) {
+            if ($this->goalEventsEnabled()) {
+                DB::table('match_goal_events')->where('match_id', $matchId)->delete();
+            }
+
+            DB::table('results')->where('match_id', $matchId)->delete();
+            DB::table('matches')->where('match_id', $matchId)->delete();
+        });
+
+        $this->rebuildStandings();
 
         return redirect()->route('admin.panel')->with('success', 'Match deleted successfully.');
     }
 
     public function recalculate()
     {
-        DB::table('standings')->truncate();
-
-        $teams = DB::table('teams')->select('team_id')->get();
-
-        foreach ($teams as $team) {
-            DB::table('standings')->insert([
-                'team_id' => $team->team_id,
-                'played' => 0,
-                'wins' => 0,
-                'draws' => 0,
-                'losses' => 0,
-                'goal_diff' => 0,
-                'points' => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-
-        $finishedMatches = DB::table('matches as m')
-            ->join('results as r', 'r.match_id', '=', 'm.match_id')
-            ->where('m.status', 'finished')
-            ->select(
-                'm.team_a_id',
-                'm.team_b_id',
-                'r.score_a',
-                'r.score_b'
-            )
-            ->get();
-
-        foreach ($finishedMatches as $match) {
-            $teamAId = $match->team_a_id;
-            $teamBId = $match->team_b_id;
-            $scoreA = (int) $match->score_a;
-            $scoreB = (int) $match->score_b;
-
-            DB::table('standings')->where('team_id', $teamAId)->increment('played');
-            DB::table('standings')->where('team_id', $teamBId)->increment('played');
-
-            DB::table('teams')->where('team_id', $teamAId)->update([
-                'goals_scored' => DB::raw('COALESCE(goals_scored, 0) + ' . $scoreA),
-                'goals_conceded' => DB::raw('COALESCE(goals_conceded, 0) + ' . $scoreB),
-            ]);
-
-            DB::table('teams')->where('team_id', $teamBId)->update([
-                'goals_scored' => DB::raw('COALESCE(goals_scored, 0) + ' . $scoreB),
-                'goals_conceded' => DB::raw('COALESCE(goals_conceded, 0) + ' . $scoreA),
-            ]);
-
-            DB::table('standings')->where('team_id', $teamAId)->update([
-                'goal_diff' => DB::raw('COALESCE(goal_diff, 0) + ' . ($scoreA - $scoreB)),
-            ]);
-
-            DB::table('standings')->where('team_id', $teamBId)->update([
-                'goal_diff' => DB::raw('COALESCE(goal_diff, 0) + ' . ($scoreB - $scoreA)),
-            ]);
-
-            if ($scoreA > $scoreB) {
-                DB::table('standings')->where('team_id', $teamAId)->increment('wins');
-                DB::table('standings')->where('team_id', $teamAId)->increment('points', 3);
-                DB::table('standings')->where('team_id', $teamBId)->increment('losses');
-            } elseif ($scoreB > $scoreA) {
-                DB::table('standings')->where('team_id', $teamBId)->increment('wins');
-                DB::table('standings')->where('team_id', $teamBId)->increment('points', 3);
-                DB::table('standings')->where('team_id', $teamAId)->increment('losses');
-            } else {
-                DB::table('standings')->where('team_id', $teamAId)->increment('draws');
-                DB::table('standings')->where('team_id', $teamBId)->increment('draws');
-                DB::table('standings')->where('team_id', $teamAId)->increment('points');
-                DB::table('standings')->where('team_id', $teamBId)->increment('points');
-            }
-        }
+        $this->rebuildStandings();
 
         return redirect()->route('admin.panel')->with('success', 'Standings recalculated successfully.');
     }
 
     private function getMatchesByStatus(string $status, string $orderBy, int $limit)
     {
-        return $this->buildMatchesQuery($status)
-            ->orderByRaw($orderBy)
-            ->limit($limit)
-            ->get();
+        return $this->attachGoalEventData(
+            $this->buildMatchesQuery($status)
+                ->orderByRaw($orderBy)
+                ->limit($limit)
+                ->get()
+        );
     }
 
     private function buildMatchesQuery(string $status)
@@ -531,5 +560,484 @@ class MatchController extends Controller
             ->select('team_id', 'team_name')
             ->orderBy('team_name')
             ->get();
+    }
+
+    private function playerPositions(): array
+    {
+        $defaults = ['Goalkeeper', 'Defender', 'Midfielder', 'Forward'];
+
+        $existing = DB::table('players')
+            ->whereNotNull('position')
+            ->where('position', '!=', '')
+            ->distinct()
+            ->orderBy('position')
+            ->pluck('position')
+            ->map(function ($position) {
+                return trim((string) $position);
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        return array_values(array_unique(array_merge($defaults, $existing)));
+    }
+
+    private function sponsorOptions(): array
+    {
+        return [
+            'Nike',
+            'Adidas',
+            'Puma',
+            'Spotify',
+            'Emirates',
+            'Etihad Airways',
+            'Qatar Airways',
+            'AIA',
+            'Rakuten',
+            'Standard Chartered',
+            'Three',
+            'Vodafone',
+            'Chevrolet',
+            'Stake',
+            'Castore',
+            'Umbro',
+            'New Balance',
+        ];
+    }
+
+    private function matchPayload(Request $request, bool $withId = false): array
+    {
+        $payload = [
+            'team_a_id' => $request->input('team_a_id', $request->input('team1')),
+            'team_b_id' => $request->input('team_b_id', $request->input('team2')),
+            'kickoff_at' => $this->normalizeDateTime($request->input('kickoff_at')),
+            'match_time' => $request->filled('match_time') ? $request->input('match_time') : null,
+            'status' => $request->input('status'),
+            'score_a' => $request->input('score_a', $request->input('score1')),
+            'score_b' => $request->input('score_b', $request->input('score2')),
+            'team_a_scorers' => $request->input('team_a_scorers', ''),
+            'team_b_scorers' => $request->input('team_b_scorers', ''),
+        ];
+
+        if ($withId) {
+            $payload['match_id'] = $request->input('match_id', $request->input('id'));
+        }
+
+        return $payload;
+    }
+
+    private function normalizeDateTime($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        return str_replace('T', ' ', $value);
+    }
+
+    private function shouldPersistResult(string $status): bool
+    {
+        return in_array($status, ['current', 'finished'], true);
+    }
+
+    private function goalEventsEnabled(): bool
+    {
+        try {
+            return Schema::hasTable('match_goal_events');
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    private function syncResult(int $matchId, $scoreA, $scoreB): void
+    {
+        $scoreA = $scoreA === null || $scoreA === '' ? 0 : (int) $scoreA;
+        $scoreB = $scoreB === null || $scoreB === '' ? 0 : (int) $scoreB;
+
+        $match = DB::table('matches')
+            ->select('team_a_id', 'team_b_id')
+            ->where('match_id', $matchId)
+            ->first();
+
+        if (!$match) {
+            return;
+        }
+
+        $winnerTeamId = $this->winnerTeamId((int) $match->team_a_id, (int) $match->team_b_id, $scoreA, $scoreB);
+
+        $exists = DB::table('results')->where('match_id', $matchId)->exists();
+
+        if ($exists) {
+            DB::table('results')
+                ->where('match_id', $matchId)
+                ->update([
+                    'score_a' => $scoreA,
+                    'score_b' => $scoreB,
+                    'winner_team_id' => $winnerTeamId,
+                ]);
+        } else {
+            DB::table('results')->insert([
+                'match_id' => $matchId,
+                'score_a' => $scoreA,
+                'score_b' => $scoreB,
+                'winner_team_id' => $winnerTeamId,
+            ]);
+        }
+    }
+
+    private function parseGoalEventPayload(array $payload): array
+    {
+        $teamAGoals = $payload['score_a'] === null || $payload['score_a'] === '' ? 0 : (int) $payload['score_a'];
+        $teamBGoals = $payload['score_b'] === null || $payload['score_b'] === '' ? 0 : (int) $payload['score_b'];
+
+        return [
+            $this->parseGoalEventsForTeam(
+                (int) $payload['team_a_id'],
+                (string) ($payload['team_a_scorers'] ?? ''),
+                $teamAGoals,
+                'team_a_scorers',
+                'Team A goal scorers'
+            ),
+            $this->parseGoalEventsForTeam(
+                (int) $payload['team_b_id'],
+                (string) ($payload['team_b_scorers'] ?? ''),
+                $teamBGoals,
+                'team_b_scorers',
+                'Team B goal scorers'
+            ),
+        ];
+    }
+
+    private function parseGoalEventsForTeam(
+        int $teamId,
+        string $input,
+        int $expectedGoals,
+        string $fieldName,
+        string $fieldLabel
+    ): array {
+        $input = trim($input);
+
+        if ($input === '') {
+            return [];
+        }
+
+        $tokens = preg_split('/[\r\n,]+/', $input) ?: [];
+        $tokens = array_values(array_filter(array_map(static function ($token) {
+            return trim((string) $token);
+        }, $tokens)));
+
+        if (count($tokens) !== $expectedGoals) {
+            throw ValidationException::withMessages([
+                $fieldName => $fieldLabel . ' must contain exactly ' . $expectedGoals . ' scorer entr' . ($expectedGoals === 1 ? 'y' : 'ies') . ' to match the score.',
+            ]);
+        }
+
+        $players = DB::table('players')
+            ->where('team_id', $teamId)
+            ->pluck('person_id', 'jersey_number')
+            ->map(static function ($personId) {
+                return (int) $personId;
+            })
+            ->all();
+
+        $events = [];
+
+        foreach ($tokens as $index => $token) {
+            if (!preg_match('/^(\d{1,2})(?:\s*@\s*(.+))?$/', $token, $matches)) {
+                throw ValidationException::withMessages([
+                    $fieldName => 'Format is invalid. Use jersey numbers like 11, 7@45\', 9@90+2\'.',
+                ]);
+            }
+
+            $jerseyNumber = (int) $matches[1];
+            $minuteLabel = isset($matches[2]) ? trim((string) $matches[2]) : null;
+
+            if (!array_key_exists($jerseyNumber, $players)) {
+                throw ValidationException::withMessages([
+                    $fieldName => 'Jersey #' . $jerseyNumber . ' does not exist in the selected team.',
+                ]);
+            }
+
+            $events[] = [
+                'team_id' => $teamId,
+                'person_id' => $players[$jerseyNumber],
+                'jersey_number' => $jerseyNumber,
+                'minute_label' => $minuteLabel !== '' ? $minuteLabel : null,
+                'sort_order' => $index + 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        return $events;
+    }
+
+    private function syncGoalEvents(int $matchId, array $teamAGoalEvents, array $teamBGoalEvents): void
+    {
+        if (!$this->goalEventsEnabled()) {
+            return;
+        }
+
+        DB::table('match_goal_events')->where('match_id', $matchId)->delete();
+
+        $rows = [];
+
+        foreach (array_merge($teamAGoalEvents, $teamBGoalEvents) as $event) {
+            $rows[] = [
+                'match_id' => $matchId,
+                'team_id' => $event['team_id'],
+                'person_id' => $event['person_id'],
+                'jersey_number' => $event['jersey_number'],
+                'minute_label' => $event['minute_label'],
+                'sort_order' => $event['sort_order'],
+                'created_at' => $event['created_at'],
+                'updated_at' => $event['updated_at'],
+            ];
+        }
+
+        if (!empty($rows)) {
+            DB::table('match_goal_events')->insert($rows);
+        }
+    }
+
+    private function rebuildStandings(): void
+    {
+        DB::table('standings')->delete();
+
+        DB::table('teams')->update([
+            'goals_scored' => 0,
+            'goals_conceded' => 0,
+        ]);
+
+        $teamIds = DB::table('teams')
+            ->orderBy('team_id')
+            ->pluck('team_id')
+            ->map(static function ($teamId) {
+                return (int) $teamId;
+            })
+            ->all();
+
+        if (empty($teamIds)) {
+            return;
+        }
+
+        $table = [];
+
+        foreach ($teamIds as $teamId) {
+            $table[$teamId] = [
+                'team_id' => $teamId,
+                'played' => 0,
+                'wins' => 0,
+                'draws' => 0,
+                'losses' => 0,
+                'goal_diff' => 0,
+                'points' => 0,
+            ];
+        }
+
+        $teamGoals = [];
+
+        foreach ($teamIds as $teamId) {
+            $teamGoals[$teamId] = [
+                'goals_scored' => 0,
+                'goals_conceded' => 0,
+            ];
+        }
+
+        $finishedMatches = DB::table('matches as m')
+            ->join('results as r', 'r.match_id', '=', 'm.match_id')
+            ->where('m.status', 'finished')
+            ->select('m.match_id', 'm.team_a_id', 'm.team_b_id', 'r.score_a', 'r.score_b')
+            ->orderBy('m.match_id')
+            ->get();
+
+        foreach ($finishedMatches as $match) {
+            $teamAId = (int) $match->team_a_id;
+            $teamBId = (int) $match->team_b_id;
+            $scoreA = (int) $match->score_a;
+            $scoreB = (int) $match->score_b;
+
+            if (!isset($table[$teamAId]) || !isset($table[$teamBId])) {
+                continue;
+            }
+
+            $table[$teamAId]['played']++;
+            $table[$teamBId]['played']++;
+
+            $teamGoals[$teamAId]['goals_scored'] += $scoreA;
+            $teamGoals[$teamAId]['goals_conceded'] += $scoreB;
+            $teamGoals[$teamBId]['goals_scored'] += $scoreB;
+            $teamGoals[$teamBId]['goals_conceded'] += $scoreA;
+
+            $table[$teamAId]['goal_diff'] += ($scoreA - $scoreB);
+            $table[$teamBId]['goal_diff'] += ($scoreB - $scoreA);
+
+            if ($scoreA > $scoreB) {
+                $table[$teamAId]['wins']++;
+                $table[$teamAId]['points'] += 3;
+                $table[$teamBId]['losses']++;
+            } elseif ($scoreB > $scoreA) {
+                $table[$teamBId]['wins']++;
+                $table[$teamBId]['points'] += 3;
+                $table[$teamAId]['losses']++;
+            } else {
+                $table[$teamAId]['draws']++;
+                $table[$teamBId]['draws']++;
+                $table[$teamAId]['points']++;
+                $table[$teamBId]['points']++;
+            }
+
+            DB::table('results')
+                ->where('match_id', $match->match_id)
+                ->update([
+                    'winner_team_id' => $this->winnerTeamId($teamAId, $teamBId, $scoreA, $scoreB),
+                ]);
+        }
+
+        DB::table('standings')->insert(array_values($table));
+
+        foreach ($teamGoals as $teamId => $goalData) {
+            DB::table('teams')
+                ->where('team_id', $teamId)
+                ->update([
+                    'goals_scored' => $goalData['goals_scored'],
+                    'goals_conceded' => $goalData['goals_conceded'],
+                ]);
+        }
+    }
+
+    private function attachGoalEventData($matches)
+    {
+        $matches = collect($matches);
+
+        if ($matches->isEmpty()) {
+            return $matches;
+        }
+
+        if (!$this->goalEventsEnabled()) {
+            return $matches->map(function ($match) {
+                $match->team1_scorers_text = '';
+                $match->team2_scorers_text = '';
+                $match->team_a_scorers_input = '';
+                $match->team_b_scorers_input = '';
+
+                return $match;
+            });
+        }
+
+        $matchIds = $matches->pluck('match_id')
+            ->filter()
+            ->map(static function ($matchId) {
+                return (int) $matchId;
+            })
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($matchIds)) {
+            return $matches;
+        }
+
+        try {
+            $goalEvents = DB::table('match_goal_events as ge')
+                ->join('persons as pe', 'pe.person_id', '=', 'ge.person_id')
+                ->select(
+                    'ge.match_id',
+                    'ge.team_id',
+                    'ge.person_id',
+                    'ge.jersey_number',
+                    'ge.minute_label',
+                    'ge.sort_order',
+                    'pe.first_name',
+                    'pe.last_name'
+                )
+                ->whereIn('ge.match_id', $matchIds)
+                ->orderBy('ge.match_id')
+                ->orderBy('ge.team_id')
+                ->orderBy('ge.sort_order')
+                ->orderBy('ge.goal_event_id')
+                ->get()
+                ->groupBy('match_id');
+        } catch (\Throwable $e) {
+            return $matches->map(function ($match) {
+                $match->team1_scorers_text = '';
+                $match->team2_scorers_text = '';
+                $match->team_a_scorers_input = '';
+                $match->team_b_scorers_input = '';
+
+                return $match;
+            });
+        }
+
+        return $matches->map(function ($match) use ($goalEvents) {
+            $teamAId = (int) ($match->team_a_id ?? $match->team1_id ?? 0);
+            $teamBId = (int) ($match->team_b_id ?? $match->team2_id ?? 0);
+            $events = collect($goalEvents->get($match->match_id, collect()));
+
+            $teamAEvents = $events->where('team_id', $teamAId)->values();
+            $teamBEvents = $events->where('team_id', $teamBId)->values();
+
+            $match->team1_scorers_text = $this->formatGoalScorerText($teamAEvents);
+            $match->team2_scorers_text = $this->formatGoalScorerText($teamBEvents);
+            $match->team_a_scorers_input = $this->formatGoalScorerInput($teamAEvents);
+            $match->team_b_scorers_input = $this->formatGoalScorerInput($teamBEvents);
+
+            return $match;
+        });
+    }
+
+    private function formatGoalScorerText($events): string
+    {
+        return collect($events)
+            ->map(function ($event) {
+                $name = trim((string) (($event->first_name ?? '') . ' ' . ($event->last_name ?? '')));
+                $name = $name !== '' ? $name : ('#' . ($event->jersey_number ?? '?'));
+
+                if (!empty($event->minute_label)) {
+                    return $name . ' ' . $event->minute_label;
+                }
+
+                return $name;
+            })
+            ->implode(', ');
+    }
+
+    private function formatGoalScorerInput($events): string
+    {
+        return collect($events)
+            ->map(function ($event) {
+                $jersey = (string) ($event->jersey_number ?? '');
+
+                if ($jersey === '') {
+                    return '';
+                }
+
+                if (!empty($event->minute_label)) {
+                    return $jersey . '@' . $event->minute_label;
+                }
+
+                return $jersey;
+            })
+            ->filter()
+            ->implode(', ');
+    }
+
+    private function winnerTeamId(int $teamAId, int $teamBId, int $scoreA, int $scoreB): ?int
+    {
+        if ($scoreA > $scoreB) {
+            return $teamAId;
+        }
+
+        if ($scoreB > $scoreA) {
+            return $teamBId;
+        }
+
+        return null;
     }
 }

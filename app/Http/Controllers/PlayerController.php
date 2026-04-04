@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class PlayerController extends Controller
 {
@@ -15,10 +16,22 @@ class PlayerController extends Controller
         $nationality = (string) $request->query('nationality', '');
         $sortBy = (string) $request->query('sort_by', 'team');
 
+        $goalEventsTableExists = $this->goalEventsEnabled();
+
         $playersQuery = DB::table('players as p')
             ->join('teams as t', 't.team_id', '=', 'p.team_id')
-            ->join('persons as pe', 'pe.person_id', '=', 'p.person_id')
-            ->select(
+            ->join('persons as pe', 'pe.person_id', '=', 'p.person_id');
+
+        if ($goalEventsTableExists) {
+            $goalSummary = DB::table('match_goal_events')
+                ->select('person_id', DB::raw('COUNT(*) AS goals'))
+                ->groupBy('person_id');
+
+            $playersQuery->leftJoinSub($goalSummary, 'pg', function ($join) {
+                $join->on('pg.person_id', '=', 'p.person_id');
+            });
+
+            $playersQuery->select(
                 'p.team_id',
                 'p.jersey_number',
                 'p.person_id',
@@ -26,8 +39,22 @@ class PlayerController extends Controller
                 't.team_name',
                 'pe.first_name',
                 'pe.last_name',
-                'pe.nationality'
+                'pe.nationality',
+                DB::raw('COALESCE(pg.goals, 0) AS goals')
             );
+        } else {
+            $playersQuery->select(
+                'p.team_id',
+                'p.jersey_number',
+                'p.person_id',
+                'p.position',
+                't.team_name',
+                'pe.first_name',
+                'pe.last_name',
+                'pe.nationality',
+                DB::raw('0 AS goals')
+            );
+        }
 
         if ($playerSearch !== '') {
             $like = '%' . $playerSearch . '%';
@@ -59,6 +86,11 @@ class PlayerController extends Controller
                 break;
             case 'jersey':
                 $playersQuery->orderBy('p.jersey_number')->orderBy('t.team_name');
+                break;
+            case 'goals':
+                $playersQuery->orderByDesc('goals')
+                    ->orderBy('t.team_name')
+                    ->orderBy('p.jersey_number');
                 break;
             default:
                 $sortBy = 'team';
@@ -207,5 +239,14 @@ class PlayerController extends Controller
         });
 
         return redirect()->route('admin.panel')->with('success', 'Player deleted successfully.');
+    }
+
+    private function goalEventsEnabled(): bool
+    {
+        try {
+            return Schema::hasTable('match_goal_events');
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 }

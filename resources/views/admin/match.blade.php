@@ -426,6 +426,20 @@ select option {
                                 <label>Score Team B</label>
                                 <input type="number" name="score2" min="0" value="0">
                             </div>
+
+                            <div class="form-group full">
+                                <label>Team A Goal Scorers</label>
+                                <textarea name="team_a_scorers" placeholder="Optional. Use jersey numbers separated by commas. Example: 11@14', 7@62'"></textarea>
+                            </div>
+
+                            <div class="form-group full">
+                                <label>Team B Goal Scorers</label>
+                                <textarea name="team_b_scorers" placeholder="Optional. Use jersey numbers separated by commas. Example: 9@33', 9@88'"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="muted" style="margin-top:10px;">
+                            Add scorer details only for current or finished matches. Each entry should match the score count.
                         </div>
 
                         <div class="action-row">
@@ -535,6 +549,20 @@ select option {
                                                 <label>Match Time Label</label>
                                                 <input type="text" name="match_time" value="{{ $match->match_time }}" placeholder="Example: FT, HT, 75'">
                                             </div>
+
+                                            <div class="form-group full">
+                                                <label>Team A Goal Scorers</label>
+                                                <textarea name="team_a_scorers" placeholder="Example: 11@14', 7@62'">{{ $match->team_a_scorers_input ?? '' }}</textarea>
+                                            </div>
+
+                                            <div class="form-group full">
+                                                <label>Team B Goal Scorers</label>
+                                                <textarea name="team_b_scorers" placeholder="Example: 9@33', 9@88'">{{ $match->team_b_scorers_input ?? '' }}</textarea>
+                                            </div>
+                                        </div>
+
+                                        <div class="muted" style="margin-top:10px;">
+                                            Use jersey numbers, optionally with minutes. Example: 11@14', 11@55', 7@90+2'
                                         </div>
 
                                         <div class="action-row">
@@ -545,7 +573,7 @@ select option {
                                 <td>
                                     <form method="POST" action="{{ route('admin.match.delete') }}" onsubmit="return confirm('Delete this match?');">
                                         @csrf
-                                        <input type="hidden" name="id" value="{{ $match->id }}">
+                                        <input type="hidden" name="match_id" value="{{ $match->match_id ?? $match->id }}">
                                         <button type="submit" class="btn btn-danger">Delete</button>
                                     </form>
                                 </td>

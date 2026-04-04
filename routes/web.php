@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [MatchController::class, 'index'])->name('home');
 
+// LIVE DATA
+Route::get('/live/current-matches', [MatchController::class, 'liveData']);
+
 // PUBLIC PAGES
 Route::get('/matches', [MatchController::class, 'fixtures'])->name('matches.index');
 Route::get('/results', [MatchController::class, 'results'])->name('results.index');

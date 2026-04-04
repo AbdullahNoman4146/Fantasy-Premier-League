@@ -326,6 +326,7 @@
                             <option value="team" @selected(($sortBy ?? 'team') === 'team')>Team Then Jersey</option>
                             <option value="name" @selected(($sortBy ?? '') === 'name')>Player Name</option>
                             <option value="jersey" @selected(($sortBy ?? '') === 'jersey')>Jersey Number</option>
+                            <option value="goals" @selected(($sortBy ?? '') === 'goals')>Most Goals</option>
                         </select>
                     </div>
 
@@ -345,6 +346,7 @@
                             <th>Jersey Number</th>
                             <th>Nationality</th>
                             <th>Position</th>
+                            <th>Goals</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -358,6 +360,7 @@
                                 <td><span class="badge">#{{ $player->jersey_number ?? 'N/A' }}</span></td>
                                 <td>{{ $player->nationality ?? 'N/A' }}</td>
                                 <td>{{ $player->position ?? 'N/A' }}</td>
+                                <td><span class="badge">{{ $player->goals ?? 0 }}</span></td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -386,5 +389,6 @@
         });
     })();
 </script>
+@include('partials.footer')
 </body>
 </html>
