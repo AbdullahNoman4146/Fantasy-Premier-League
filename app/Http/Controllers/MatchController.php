@@ -40,31 +40,35 @@ class MatchController extends Controller
     }
 
     public function liveData()
-    {
-        $currentMatches = $this->getMatchesByStatus('current', 'm.kickoff_at DESC', 20)
-            ->map(function ($match) {
-                return [
-                    'match_id' => (int) $match->match_id,
-                    'team1' => $match->team1,
-                    'team2' => $match->team2,
-                    'kickoff_at' => $match->kickoff_at,
-                    'match_time' => $match->match_time,
-                    'status' => $match->status,
-                    'score1' => (int) ($match->score1 ?? 0),
-                    'score2' => (int) ($match->score2 ?? 0),
-                    'team1_scorers_text' => $match->team1_scorers_text ?? '',
-                    'team2_scorers_text' => $match->team2_scorers_text ?? '',
-                ];
-            })
-            ->values();
+{
+    $currentMatches = $this->getMatchesByStatus('current', 'm.kickoff_at DESC', 20)
+        ->map(function ($match) {
+            return [
+                'match_id' => (int) $match->match_id,
+                'team1' => $match->team1,
+                'team2' => $match->team2,
+                'kickoff_at' => $match->kickoff_at,
+                'match_time' => $match->match_time,
+                'status' => $match->status,
+                'live_phase' => $match->live_phase,
+                'first_half_added_minutes' => (int) ($match->first_half_added_minutes ?? 0),
+                'second_half_added_minutes' => (int) ($match->second_half_added_minutes ?? 0),
+                'second_half_started_at' => $match->second_half_started_at,
+                'score1' => (int) ($match->score1 ?? 0),
+                'score2' => (int) ($match->score2 ?? 0),
+                'team1_scorers_text' => $match->team1_scorers_text ?? '',
+                'team2_scorers_text' => $match->team2_scorers_text ?? '',
+            ];
+        })
+        ->values();
 
-        return response()->json([
-            'matches' => $currentMatches,
-            'count' => $currentMatches->count(),
-            'server_time' => now()->format('Y-m-d H:i:s'),
-        ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
-          ->header('Pragma', 'no-cache');
-    }
+    return response()->json([
+        'matches' => $currentMatches,
+        'count' => $currentMatches->count(),
+        'server_time' => now()->format('Y-m-d H:i:s'),
+    ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+      ->header('Pragma', 'no-cache');
+}
 
     public function fixtures(Request $request)
     {
@@ -326,28 +330,32 @@ class MatchController extends Controller
         "));
 
         $matches = $this->attachGoalEventData(collect(DB::select("
-            SELECT
-                m.match_id,
-                m.match_id AS id,
-                m.team_a_id,
-                m.team_a_id AS team1_id,
-                m.team_b_id,
-                m.team_b_id AS team2_id,
-                ta.team_name AS team1,
-                ta.team_name AS team1_name,
-                tb.team_name AS team2,
-                tb.team_name AS team2_name,
-                m.kickoff_at,
-                m.match_time,
-                m.status,
-                COALESCE(r.score_a, 0) AS score1,
-                COALESCE(r.score_b, 0) AS score2
-            FROM matches m
-            JOIN teams ta ON ta.team_id = m.team_a_id
-            JOIN teams tb ON tb.team_id = m.team_b_id
-            LEFT JOIN results r ON r.match_id = m.match_id
-            ORDER BY COALESCE(m.kickoff_at, m.created_at) DESC, m.match_id DESC
-        ")));
+    SELECT
+        m.match_id,
+        m.match_id AS id,
+        m.team_a_id,
+        m.team_a_id AS team1_id,
+        m.team_b_id,
+        m.team_b_id AS team2_id,
+        ta.team_name AS team1,
+        ta.team_name AS team1_name,
+        tb.team_name AS team2,
+        tb.team_name AS team2_name,
+        m.kickoff_at,
+        m.match_time,
+        m.status,
+        m.live_phase,
+        m.first_half_added_minutes,
+        m.second_half_added_minutes,
+        m.second_half_started_at,
+        COALESCE(r.score_a, 0) AS score1,
+        COALESCE(r.score_b, 0) AS score2
+    FROM matches m
+    JOIN teams ta ON ta.team_id = m.team_a_id
+    JOIN teams tb ON tb.team_id = m.team_b_id
+    LEFT JOIN results r ON r.match_id = m.match_id
+    ORDER BY COALESCE(m.kickoff_at, m.created_at) DESC, m.match_id DESC
+")));
 
         $standings = collect(DB::select("
             SELECT
@@ -402,30 +410,38 @@ class MatchController extends Controller
         $payload = $this->matchPayload($request, false);
 
         $request->merge($payload);
-        $request->validate([
-            'team_a_id' => ['required', 'different:team_b_id', 'exists:teams,team_id'],
-            'team_b_id' => ['required', 'different:team_a_id', 'exists:teams,team_id'],
-            'kickoff_at' => ['nullable', 'date'],
-            'match_time' => ['nullable', 'string', 'max:50'],
-            'status' => ['required', 'in:upcoming,current,finished'],
-            'score_a' => ['nullable', 'integer', 'min:0'],
-            'score_b' => ['nullable', 'integer', 'min:0'],
-            'team_a_scorers' => ['nullable', 'string', 'max:1000'],
-            'team_b_scorers' => ['nullable', 'string', 'max:1000'],
-        ]);
+$request->validate([
+    'team_a_id' => ['required', 'different:team_b_id', 'exists:teams,team_id'],
+    'team_b_id' => ['required', 'different:team_a_id', 'exists:teams,team_id'],
+    'kickoff_at' => ['nullable', 'date'],
+    'match_time' => ['nullable', 'string', 'max:50'],
+    'status' => ['required', 'in:upcoming,current,finished'],
+    'live_phase' => ['nullable', 'in:first_half,break,second_half,finished'],
+    'first_half_added_minutes' => ['nullable', 'integer', 'min:0', 'max:30'],
+    'second_half_added_minutes' => ['nullable', 'integer', 'min:0', 'max:30'],
+    'second_half_started_at' => ['nullable', 'date'],
+    'score_a' => ['nullable', 'integer', 'min:0'],
+    'score_b' => ['nullable', 'integer', 'min:0'],
+    'team_a_scorers' => ['nullable', 'string', 'max:1000'],
+    'team_b_scorers' => ['nullable', 'string', 'max:1000'],
+]);
 
         [$teamAGoalEvents, $teamBGoalEvents] = $this->parseGoalEventPayload($payload);
 
         DB::transaction(function () use ($payload, $teamAGoalEvents, $teamBGoalEvents) {
             $matchId = DB::table('matches')->insertGetId([
-                'team_a_id' => $payload['team_a_id'],
-                'team_b_id' => $payload['team_b_id'],
-                'kickoff_at' => $payload['kickoff_at'],
-                'match_time' => $payload['match_time'],
-                'status' => $payload['status'],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+    'team_a_id' => $payload['team_a_id'],
+    'team_b_id' => $payload['team_b_id'],
+    'kickoff_at' => $payload['kickoff_at'],
+    'match_time' => $payload['match_time'],
+    'status' => $payload['status'],
+    'live_phase' => $payload['live_phase'],
+    'first_half_added_minutes' => $payload['first_half_added_minutes'],
+    'second_half_added_minutes' => $payload['second_half_added_minutes'],
+    'second_half_started_at' => $payload['second_half_started_at'],
+    'created_at' => now(),
+    'updated_at' => now(),
+]);
 
             if ($this->shouldPersistResult($payload['status'])) {
                 $this->syncResult($matchId, $payload['score_a'], $payload['score_b']);
@@ -449,32 +465,40 @@ class MatchController extends Controller
         $payload = $this->matchPayload($request, true);
 
         $request->merge($payload);
-        $request->validate([
-            'match_id' => ['required', 'exists:matches,match_id'],
-            'team_a_id' => ['required', 'different:team_b_id', 'exists:teams,team_id'],
-            'team_b_id' => ['required', 'different:team_a_id', 'exists:teams,team_id'],
-            'kickoff_at' => ['nullable', 'date'],
-            'match_time' => ['nullable', 'string', 'max:50'],
-            'status' => ['required', 'in:upcoming,current,finished'],
-            'score_a' => ['nullable', 'integer', 'min:0'],
-            'score_b' => ['nullable', 'integer', 'min:0'],
-            'team_a_scorers' => ['nullable', 'string', 'max:1000'],
-            'team_b_scorers' => ['nullable', 'string', 'max:1000'],
-        ]);
+$request->validate([
+    'match_id' => ['required', 'exists:matches,match_id'],
+    'team_a_id' => ['required', 'different:team_b_id', 'exists:teams,team_id'],
+    'team_b_id' => ['required', 'different:team_a_id', 'exists:teams,team_id'],
+    'kickoff_at' => ['nullable', 'date'],
+    'match_time' => ['nullable', 'string', 'max:50'],
+    'status' => ['required', 'in:upcoming,current,finished'],
+    'live_phase' => ['nullable', 'in:first_half,break,second_half,finished'],
+    'first_half_added_minutes' => ['nullable', 'integer', 'min:0', 'max:30'],
+    'second_half_added_minutes' => ['nullable', 'integer', 'min:0', 'max:30'],
+    'second_half_started_at' => ['nullable', 'date'],
+    'score_a' => ['nullable', 'integer', 'min:0'],
+    'score_b' => ['nullable', 'integer', 'min:0'],
+    'team_a_scorers' => ['nullable', 'string', 'max:1000'],
+    'team_b_scorers' => ['nullable', 'string', 'max:1000'],
+]);
 
         [$teamAGoalEvents, $teamBGoalEvents] = $this->parseGoalEventPayload($payload);
 
         DB::transaction(function () use ($payload, $teamAGoalEvents, $teamBGoalEvents) {
             DB::table('matches')
-                ->where('match_id', $payload['match_id'])
-                ->update([
-                    'team_a_id' => $payload['team_a_id'],
-                    'team_b_id' => $payload['team_b_id'],
-                    'kickoff_at' => $payload['kickoff_at'],
-                    'match_time' => $payload['match_time'],
-                    'status' => $payload['status'],
-                    'updated_at' => now(),
-                ]);
+    ->where('match_id', $payload['match_id'])
+    ->update([
+        'team_a_id' => $payload['team_a_id'],
+        'team_b_id' => $payload['team_b_id'],
+        'kickoff_at' => $payload['kickoff_at'],
+        'match_time' => $payload['match_time'],
+        'status' => $payload['status'],
+        'live_phase' => $payload['live_phase'],
+        'first_half_added_minutes' => $payload['first_half_added_minutes'],
+        'second_half_added_minutes' => $payload['second_half_added_minutes'],
+        'second_half_started_at' => $payload['second_half_started_at'],
+        'updated_at' => now(),
+    ]);
 
             if ($this->shouldPersistResult($payload['status'])) {
                 $this->syncResult((int) $payload['match_id'], $payload['score_a'], $payload['score_b']);
@@ -534,25 +558,29 @@ class MatchController extends Controller
     }
 
     private function buildMatchesQuery(string $status)
-    {
-        return DB::table('matches as m')
-            ->join('teams as ta', 'ta.team_id', '=', 'm.team_a_id')
-            ->join('teams as tb', 'tb.team_id', '=', 'm.team_b_id')
-            ->leftJoin('results as r', 'r.match_id', '=', 'm.match_id')
-            ->where('m.status', $status)
-            ->select(
-                'm.match_id',
-                'm.team_a_id',
-                'm.team_b_id',
-                'ta.team_name as team1',
-                'tb.team_name as team2',
-                'm.kickoff_at',
-                'm.match_time',
-                'm.status',
-                DB::raw('COALESCE(r.score_a, 0) as score1'),
-                DB::raw('COALESCE(r.score_b, 0) as score2')
-            );
-    }
+{
+    return DB::table('matches as m')
+        ->join('teams as ta', 'ta.team_id', '=', 'm.team_a_id')
+        ->join('teams as tb', 'tb.team_id', '=', 'm.team_b_id')
+        ->leftJoin('results as r', 'r.match_id', '=', 'm.match_id')
+        ->where('m.status', $status)
+        ->select(
+            'm.match_id',
+            'm.team_a_id',
+            'm.team_b_id',
+            'ta.team_name as team1',
+            'tb.team_name as team2',
+            'm.kickoff_at',
+            'm.match_time',
+            'm.status',
+            'm.live_phase',
+            'm.first_half_added_minutes',
+            'm.second_half_added_minutes',
+            'm.second_half_started_at',
+            DB::raw('COALESCE(r.score_a, 0) as score1'),
+            DB::raw('COALESCE(r.score_b, 0) as score2')
+        );
+}
 
     private function getTeamOptions()
     {
@@ -606,25 +634,29 @@ class MatchController extends Controller
     }
 
     private function matchPayload(Request $request, bool $withId = false): array
-    {
-        $payload = [
-            'team_a_id' => $request->input('team_a_id', $request->input('team1')),
-            'team_b_id' => $request->input('team_b_id', $request->input('team2')),
-            'kickoff_at' => $this->normalizeDateTime($request->input('kickoff_at')),
-            'match_time' => $request->filled('match_time') ? $request->input('match_time') : null,
-            'status' => $request->input('status'),
-            'score_a' => $request->input('score_a', $request->input('score1')),
-            'score_b' => $request->input('score_b', $request->input('score2')),
-            'team_a_scorers' => $request->input('team_a_scorers', ''),
-            'team_b_scorers' => $request->input('team_b_scorers', ''),
-        ];
+{
+    $payload = [
+        'team_a_id' => $request->input('team_a_id', $request->input('team1')),
+        'team_b_id' => $request->input('team_b_id', $request->input('team2')),
+        'kickoff_at' => $this->normalizeDateTime($request->input('kickoff_at')),
+        'match_time' => $request->filled('match_time') ? $request->input('match_time') : null,
+        'status' => $request->input('status'),
+        'live_phase' => $request->filled('live_phase') ? $request->input('live_phase') : null,
+        'first_half_added_minutes' => (int) $request->input('first_half_added_minutes', 0),
+        'second_half_added_minutes' => (int) $request->input('second_half_added_minutes', 0),
+        'second_half_started_at' => $this->normalizeDateTime($request->input('second_half_started_at')),
+        'score_a' => $request->input('score_a', $request->input('score1')),
+        'score_b' => $request->input('score_b', $request->input('score2')),
+        'team_a_scorers' => $request->input('team_a_scorers', ''),
+        'team_b_scorers' => $request->input('team_b_scorers', ''),
+    ];
 
-        if ($withId) {
-            $payload['match_id'] = $request->input('match_id', $request->input('id'));
-        }
-
-        return $payload;
+    if ($withId) {
+        $payload['match_id'] = $request->input('match_id', $request->input('id'));
     }
+
+    return $payload;
+}
 
     private function normalizeDateTime($value): ?string
     {

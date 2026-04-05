@@ -378,65 +378,91 @@ select option {
                     <form method="POST" action="{{ route('admin.match.create') }}">
                         @csrf
                         <div class="form-grid">
-                            <div class="form-group">
-                                <label>Team A</label>
-                                <select name="team1" required>
-                                    <option value="">Select Team A</option>
-                                    @foreach($teams as $team)
-                                        <option value="{{ $team->team_id }}">{{ $team->team_name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
+    <div class="form-group">
+        <label>Team A</label>
+        <select name="team1" required>
+            <option value="">Select Team A</option>
+            @foreach($teams as $team)
+                <option value="{{ $team->team_id }}">{{ $team->team_name }}</option>
+            @endforeach
+        </select>
+    </div>
 
-                            <div class="form-group">
-                                <label>Team B</label>
-                                <select name="team2" required>
-                                    <option value="">Select Team B</option>
-                                    @foreach($teams as $team)
-                                        <option value="{{ $team->team_id }}">{{ $team->team_name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
+    <div class="form-group">
+        <label>Team B</label>
+        <select name="team2" required>
+            <option value="">Select Team B</option>
+            @foreach($teams as $team)
+                <option value="{{ $team->team_id }}">{{ $team->team_name }}</option>
+            @endforeach
+        </select>
+    </div>
 
-                            <div class="form-group">
-                                <label>Status</label>
-                                <select name="status" required>
-                                    <option value="upcoming">Upcoming</option>
-                                    <option value="current">Current</option>
-                                    <option value="finished">Finished</option>
-                                </select>
-                            </div>
+    <div class="form-group">
+        <label>Status</label>
+        <select name="status" required>
+            <option value="upcoming">Upcoming</option>
+            <option value="current">Current</option>
+            <option value="finished">Finished</option>
+        </select>
+    </div>
 
-                            <div class="form-group">
-                                <label>Kickoff Date & Time</label>
-                                <input type="datetime-local" name="kickoff_at">
-                            </div>
+    <div class="form-group">
+        <label>Kickoff Date & Time</label>
+        <input type="datetime-local" name="kickoff_at">
+    </div>
 
-                            <div class="form-group">
-                                <label>Match Time Label</label>
-                                <input type="text" name="match_time" placeholder="Example: FT, HT, 75', 18 Mar 8:00 PM">
-                            </div>
+    <div class="form-group">
+        <label>Match Time Label</label>
+        <input type="text" name="match_time" placeholder="Example: FT, HT, 75', 18 Mar 8:00 PM">
+    </div>
 
-                            <div class="form-group">
-                                <label>Score Team A</label>
-                                <input type="number" name="score1" min="0" value="0">
-                            </div>
+    <div class="form-group">
+        <label>Live Phase</label>
+        <select name="live_phase">
+            <option value="">Select Live Phase</option>
+            <option value="first_half">1st Half</option>
+            <option value="break">Break</option>
+            <option value="second_half">2nd Half</option>
+            <option value="finished">Finished</option>
+        </select>
+    </div>
 
-                            <div class="form-group">
-                                <label>Score Team B</label>
-                                <input type="number" name="score2" min="0" value="0">
-                            </div>
+    <div class="form-group">
+        <label>1st Half Added Minutes</label>
+        <input type="number" name="first_half_added_minutes" min="0" max="30" value="0">
+    </div>
 
-                            <div class="form-group full">
-                                <label>Team A Goal Scorers</label>
-                                <textarea name="team_a_scorers" placeholder="Optional. Use jersey numbers separated by commas. Example: 11@14', 7@62'"></textarea>
-                            </div>
+    <div class="form-group">
+        <label>2nd Half Added Minutes</label>
+        <input type="number" name="second_half_added_minutes" min="0" max="30" value="0">
+    </div>
 
-                            <div class="form-group full">
-                                <label>Team B Goal Scorers</label>
-                                <textarea name="team_b_scorers" placeholder="Optional. Use jersey numbers separated by commas. Example: 9@33', 9@88'"></textarea>
-                            </div>
-                        </div>
+    <div class="form-group">
+        <label>2nd Half Started At</label>
+        <input type="datetime-local" name="second_half_started_at">
+    </div>
+
+    <div class="form-group">
+        <label>Score Team A</label>
+        <input type="number" name="score1" min="0" value="0">
+    </div>
+
+    <div class="form-group">
+        <label>Score Team B</label>
+        <input type="number" name="score2" min="0" value="0">
+    </div>
+
+    <div class="form-group full">
+        <label>Team A Goal Scorers</label>
+        <textarea name="team_a_scorers" placeholder="Optional. Use jersey numbers separated by commas. Example: 11@14', 7@62'"></textarea>
+    </div>
+
+    <div class="form-group full">
+        <label>Team B Goal Scorers</label>
+        <textarea name="team_b_scorers" placeholder="Optional. Use jersey numbers separated by commas. Example: 9@33', 9@88'"></textarea>
+    </div>
+</div>
 
                         <div class="muted" style="margin-top:10px;">
                             Add scorer details only for current or finished matches. Each entry should match the score count.
@@ -499,67 +525,93 @@ select option {
                                         <input type="hidden" name="id" value="{{ $match->id }}">
 
                                         <div class="inline-form">
-                                            <div class="form-group">
-                                                <label>Team A</label>
-                                                <select name="team1" required>
-                                                    @foreach($teams as $team)
-                                                        <option value="{{ $team->team_id }}" {{ (int)$team->team_id === (int)$match->team1_id ? 'selected' : '' }}>
-                                                            {{ $team->team_name }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
+    <div class="form-group">
+        <label>Team A</label>
+        <select name="team1" required>
+            @foreach($teams as $team)
+                <option value="{{ $team->team_id }}" {{ (int)$team->team_id === (int)$match->team1_id ? 'selected' : '' }}>
+                    {{ $team->team_name }}
+                </option>
+            @endforeach
+        </select>
+    </div>
 
-                                            <div class="form-group">
-                                                <label>Team B</label>
-                                                <select name="team2" required>
-                                                    @foreach($teams as $team)
-                                                        <option value="{{ $team->team_id }}" {{ (int)$team->team_id === (int)$match->team2_id ? 'selected' : '' }}>
-                                                            {{ $team->team_name }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
+    <div class="form-group">
+        <label>Team B</label>
+        <select name="team2" required>
+            @foreach($teams as $team)
+                <option value="{{ $team->team_id }}" {{ (int)$team->team_id === (int)$match->team2_id ? 'selected' : '' }}>
+                    {{ $team->team_name }}
+                </option>
+            @endforeach
+        </select>
+    </div>
 
-                                            <div class="form-group">
-                                                <label>Status</label>
-                                                <select name="status" required>
-                                                    <option value="upcoming" {{ $match->status === 'upcoming' ? 'selected' : '' }}>Upcoming</option>
-                                                    <option value="current" {{ $match->status === 'current' ? 'selected' : '' }}>Current</option>
-                                                    <option value="finished" {{ $match->status === 'finished' ? 'selected' : '' }}>Finished</option>
-                                                </select>
-                                            </div>
+    <div class="form-group">
+        <label>Status</label>
+        <select name="status" required>
+            <option value="upcoming" {{ $match->status === 'upcoming' ? 'selected' : '' }}>Upcoming</option>
+            <option value="current" {{ $match->status === 'current' ? 'selected' : '' }}>Current</option>
+            <option value="finished" {{ $match->status === 'finished' ? 'selected' : '' }}>Finished</option>
+        </select>
+    </div>
 
-                                            <div class="form-group">
-                                                <label>Kickoff</label>
-                                                <input type="datetime-local" name="kickoff_at" value="{{ $match->kickoff_at ? \Carbon\Carbon::parse($match->kickoff_at)->format('Y-m-d\TH:i') : '' }}">
-                                            </div>
+    <div class="form-group">
+        <label>Kickoff</label>
+        <input type="datetime-local" name="kickoff_at" value="{{ $match->kickoff_at ? \Carbon\Carbon::parse($match->kickoff_at)->format('Y-m-d\TH:i') : '' }}">
+    </div>
 
-                                            <div class="form-group">
-                                                <label>Score A</label>
-                                                <input type="number" name="score1" min="0" value="{{ $match->score1 }}">
-                                            </div>
+    <div class="form-group">
+        <label>Match Time Label</label>
+        <input type="text" name="match_time" value="{{ $match->match_time }}" placeholder="Example: FT, HT, 75'">
+    </div>
 
-                                            <div class="form-group">
-                                                <label>Score B</label>
-                                                <input type="number" name="score2" min="0" value="{{ $match->score2 }}">
-                                            </div>
+    <div class="form-group">
+        <label>Live Phase</label>
+        <select name="live_phase">
+            <option value="">Select Live Phase</option>
+            <option value="first_half" {{ ($match->live_phase ?? '') === 'first_half' ? 'selected' : '' }}>1st Half</option>
+            <option value="break" {{ ($match->live_phase ?? '') === 'break' ? 'selected' : '' }}>Break</option>
+            <option value="second_half" {{ ($match->live_phase ?? '') === 'second_half' ? 'selected' : '' }}>2nd Half</option>
+            <option value="finished" {{ ($match->live_phase ?? '') === 'finished' ? 'selected' : '' }}>Finished</option>
+        </select>
+    </div>
 
-                                            <div class="form-group full">
-                                                <label>Match Time Label</label>
-                                                <input type="text" name="match_time" value="{{ $match->match_time }}" placeholder="Example: FT, HT, 75'">
-                                            </div>
+    <div class="form-group">
+        <label>1st Half Added Minutes</label>
+        <input type="number" name="first_half_added_minutes" min="0" max="30" value="{{ (int)($match->first_half_added_minutes ?? 0) }}">
+    </div>
 
-                                            <div class="form-group full">
-                                                <label>Team A Goal Scorers</label>
-                                                <textarea name="team_a_scorers" placeholder="Example: 11@14', 7@62'">{{ $match->team_a_scorers_input ?? '' }}</textarea>
-                                            </div>
+    <div class="form-group">
+        <label>2nd Half Added Minutes</label>
+        <input type="number" name="second_half_added_minutes" min="0" max="30" value="{{ (int)($match->second_half_added_minutes ?? 0) }}">
+    </div>
 
-                                            <div class="form-group full">
-                                                <label>Team B Goal Scorers</label>
-                                                <textarea name="team_b_scorers" placeholder="Example: 9@33', 9@88'">{{ $match->team_b_scorers_input ?? '' }}</textarea>
-                                            </div>
-                                        </div>
+    <div class="form-group">
+        <label>2nd Half Started At</label>
+        <input type="datetime-local" name="second_half_started_at" value="{{ $match->second_half_started_at ? \Carbon\Carbon::parse($match->second_half_started_at)->format('Y-m-d\TH:i') : '' }}">
+    </div>
+
+    <div class="form-group">
+        <label>Score A</label>
+        <input type="number" name="score1" min="0" value="{{ $match->score1 }}">
+    </div>
+
+    <div class="form-group">
+        <label>Score B</label>
+        <input type="number" name="score2" min="0" value="{{ $match->score2 }}">
+    </div>
+
+    <div class="form-group full">
+        <label>Team A Goal Scorers</label>
+        <textarea name="team_a_scorers" placeholder="Example: 11@14', 7@62'">{{ $match->team_a_scorers_input ?? '' }}</textarea>
+    </div>
+
+    <div class="form-group full">
+        <label>Team B Goal Scorers</label>
+        <textarea name="team_b_scorers" placeholder="Example: 9@33', 9@88'">{{ $match->team_b_scorers_input ?? '' }}</textarea>
+    </div>
+</div>
 
                                         <div class="muted" style="margin-top:10px;">
                                             Use jersey numbers, optionally with minutes. Example: 11@14', 11@55', 7@90+2'
