@@ -192,9 +192,14 @@
                                     <div class="live-top">
                                         <span class="live-badge"><span class="live-dot"></span> LIVE</span>
                                         <span class="live-minute"
-                                              data-kickoff="{{ $match->kickoff_at ?? '' }}"
-                                              data-fallback="{{ $match->match_time ?? '' }}">
-                                            LIVE
+                                           data-kickoff="{{ $match->kickoff_at ?? '' }}"
+                                           data-fallback="{{ $match->match_time ?? '' }}"
+                                           data-status="{{ $match->status ?? '' }}"
+                                           data-live-phase="{{ $match->live_phase ?? '' }}"
+                                           data-first-half-added="{{ (int)($match->first_half_added_minutes ?? 0) }}"
+                                           data-second-half-added="{{ (int)($match->second_half_added_minutes ?? 0) }}"
+                                           data-second-half-started-at="{{ $match->second_half_started_at ?? '' }}">
+                                             LIVE
                                         </span>
                                     </div>
                                     <div class="muted">Kickoff: {{ $match->kickoff_at ?? 'N/A' }}</div>
@@ -348,34 +353,85 @@ document.addEventListener("DOMContentLoaded", function () {
         );
     }
 
-    function formatLiveMinute(kickoffAt, fallbackLabel) {
-        const kickoffDate = parseLocalDateTime(kickoffAt);
+    function formatLiveMinute(matchData) {
+    const fallbackLabel = matchData.fallbackLabel || "";
+    const status = (matchData.status || "").toLowerCase();
+    const livePhase = (matchData.livePhase || "").toLowerCase();
 
-        if (!kickoffDate || isNaN(kickoffDate.getTime())) {
-            return fallbackLabel ? fallbackLabel : "LIVE";
-        }
-
-        const diffMs = Date.now() - kickoffDate.getTime();
-        const rawMinutes = Math.max(0, Math.floor(diffMs / 60000));
-        const elapsedMinutes = diffMs >= 0 ? Math.max(1, rawMinutes) : 0;
-
-        if (elapsedMinutes > 90) {
-            return "90+" + (elapsedMinutes - 90) + "'";
-        }
-
-        return elapsedMinutes + "'";
+    if (status === "finished" || livePhase === "finished") {
+        return fallbackLabel || "FT";
     }
+
+    if (livePhase === "break") {
+        return "Break";
+    }
+
+    if (livePhase === "second_half") {
+        const secondHalfStart = parseLocalDateTime(matchData.secondHalfStartedAt);
+
+        if (!secondHalfStart || isNaN(secondHalfStart.getTime())) {
+            return fallbackLabel || "46'";
+        }
+
+        const diffMs = Date.now() - secondHalfStart.getTime();
+        const rawMinutes = Math.max(0, Math.floor(diffMs / 60000));
+        let elapsedMinute = 46 + rawMinutes;
+
+        const secondHalfAdded = Math.max(0, parseInt(matchData.secondHalfAddedMinutes || 0, 10));
+        const finalSecondHalfMinute = 90 + secondHalfAdded;
+
+        if (elapsedMinute > finalSecondHalfMinute) {
+            elapsedMinute = finalSecondHalfMinute;
+        }
+
+        if (elapsedMinute > 90) {
+            return "90+" + (elapsedMinute - 90) + "'";
+        }
+
+        return elapsedMinute + "'";
+    }
+
+    const kickoffDate = parseLocalDateTime(matchData.kickoffAt);
+
+    if (!kickoffDate || isNaN(kickoffDate.getTime())) {
+        return fallbackLabel || "LIVE";
+    }
+
+    const diffMs = Date.now() - kickoffDate.getTime();
+    const rawMinutes = Math.max(0, Math.floor(diffMs / 60000));
+    let elapsedMinute = diffMs >= 0 ? Math.max(1, rawMinutes) : 0;
+
+    const firstHalfAdded = Math.max(0, parseInt(matchData.firstHalfAddedMinutes || 0, 10));
+    const finalFirstHalfMinute = 45 + firstHalfAdded;
+
+    if (elapsedMinute > finalFirstHalfMinute) {
+        return "Break";
+    }
+
+    if (elapsedMinute > 45) {
+        return "45+" + (elapsedMinute - 45) + "'";
+    }
+
+    return elapsedMinute + "'";
+}
 
     function updateLiveMinuteLabels() {
-        const labels = document.querySelectorAll(".live-minute");
+    const labels = document.querySelectorAll(".live-minute");
 
-        labels.forEach(function (element) {
-            const kickoffAt = element.getAttribute("data-kickoff") || "";
-            const fallbackLabel = element.getAttribute("data-fallback") || "";
-            element.textContent = formatLiveMinute(kickoffAt, fallbackLabel);
-        });
-    }
+    labels.forEach(function (element) {
+        const matchData = {
+            kickoffAt: element.getAttribute("data-kickoff") || "",
+            fallbackLabel: element.getAttribute("data-fallback") || "",
+            status: element.getAttribute("data-status") || "",
+            livePhase: element.getAttribute("data-live-phase") || "",
+            firstHalfAddedMinutes: element.getAttribute("data-first-half-added") || "0",
+            secondHalfAddedMinutes: element.getAttribute("data-second-half-added") || "0",
+            secondHalfStartedAt: element.getAttribute("data-second-half-started-at") || "",
+        };
 
+        element.textContent = formatLiveMinute(matchData);
+    });
+}
     function renderCurrentMatches(matches) {
         if (!currentMatchesList) return;
 
@@ -405,8 +461,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 <div class="card live-card" data-match-id="${escapeHtml(match.match_id)}">
                     <div class="live-top">
                         <span class="live-badge"><span class="live-dot"></span> LIVE</span>
-                        <span class="live-minute" data-kickoff="${escapeHtml(kickoffAt)}" data-fallback="${escapeHtml(matchTime)}">
-                            ${escapeHtml(formatLiveMinute(kickoffAt, matchTime))}
+                        <span class="live-minute"
+                             data-kickoff="${escapeHtml(kickoffAt || "")}"
+                             data-fallback="${escapeHtml(match.match_time || "")}"
+                             data-status="${escapeHtml(match.status || "")}"
+                             data-live-phase="${escapeHtml(match.live_phase || "")}"
+                             data-first-half-added="${escapeHtml(match.first_half_added_minutes || 0)}"
+                             data-second-half-added="${escapeHtml(match.second_half_added_minutes || 0)}"
+                             data-second-half-started-at="${escapeHtml(match.second_half_started_at || "")}">
+                                    LIVE
                         </span>
                     </div>
                     <div class="muted">Kickoff: ${escapeHtml(kickoffAt || "N/A")}</div>
