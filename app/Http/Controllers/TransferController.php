@@ -87,20 +87,22 @@ class TransferController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'summary' => ['nullable', 'string'],
             'content' => ['required', 'string'],
             'status' => ['required', 'in:published,draft'],
-            'posted_at' => ['nullable', 'date'],
+            'posted_at' => ['prohibited'],
         ]);
 
+        $publishedAt = $validated['status'] === 'published' ? now() : null;
+
         DB::table('transfer_posts')->insert([
-            'title' => $request->title,
-            'summary' => $request->summary,
-            'content' => $request->content,
-            'status' => $request->status,
-            'posted_at' => $request->posted_at,
+            'title' => $validated['title'],
+            'summary' => $validated['summary'] ?? null,
+            'content' => $validated['content'],
+            'status' => $validated['status'],
+            'posted_at' => $publishedAt,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -110,23 +112,33 @@ class TransferController extends Controller
 
     public function update(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'transfer_post_id' => ['required', 'integer', 'exists:transfer_posts,transfer_post_id'],
             'title' => ['required', 'string', 'max:255'],
             'summary' => ['nullable', 'string'],
             'content' => ['required', 'string'],
             'status' => ['required', 'in:published,draft'],
-            'posted_at' => ['nullable', 'date'],
+            'posted_at' => ['prohibited'],
         ]);
 
+        $existingPost = DB::table('transfer_posts')
+            ->select('posted_at', 'status')
+            ->where('transfer_post_id', $validated['transfer_post_id'])
+            ->first();
+
+        $publishedAt = null;
+        if ($validated['status'] === 'published') {
+            $publishedAt = $existingPost?->posted_at ?: now();
+        }
+
         DB::table('transfer_posts')
-            ->where('transfer_post_id', $request->transfer_post_id)
+            ->where('transfer_post_id', $validated['transfer_post_id'])
             ->update([
-                'title' => $request->title,
-                'summary' => $request->summary,
-                'content' => $request->content,
-                'status' => $request->status,
-                'posted_at' => $request->posted_at,
+                'title' => $validated['title'],
+                'summary' => $validated['summary'] ?? null,
+                'content' => $validated['content'],
+                'status' => $validated['status'],
+                'posted_at' => $publishedAt,
                 'updated_at' => now(),
             ]);
 

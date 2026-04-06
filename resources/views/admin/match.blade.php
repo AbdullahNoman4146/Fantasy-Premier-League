@@ -94,7 +94,7 @@
 
         .tab-btn:hover,
         .tab-btn.active {
-            background: rgba(255,255,255,0.16);
+            background: rgba(50,100,199,0.75);
             border-color: rgba(255,255,255,0.22);
         }
 
@@ -1335,8 +1335,8 @@ select option {
                         </div>
 
                         <div class="form-group">
-                            <label>Posted At</label>
-                            <input type="datetime-local" name="posted_at">
+                            <label>Published Time</label>
+                            <input type="text" value="Assigned automatically from current server time when status is Published" readonly>
                         </div>
                     </div>
 
@@ -1397,8 +1397,8 @@ select option {
                                             </div>
 
                                             <div class="form-group">
-                                                <label>Posted At</label>
-                                                <input type="datetime-local" name="posted_at" value="{{ $post->posted_at ? \Carbon\Carbon::parse($post->posted_at)->format('Y-m-d\TH:i') : '' }}">
+                                                <label>Published Time</label>
+                                                <input type="text" value="{{ $post->posted_at ? \Carbon\Carbon::parse($post->posted_at)->format('d M Y, h:i A') : 'Will be assigned automatically when published' }}" readonly>
                                             </div>
                                         </div>
 
@@ -1485,15 +1485,32 @@ select option {
 document.addEventListener('DOMContentLoaded', function () {
     const buttons = document.querySelectorAll('.tab-btn');
     const sections = document.querySelectorAll('.tab-section');
+    const adminTabStorageKey = 'fpl_admin_active_tab';
+
+    function getTabName(tabName) {
+        if (!tabName) {
+            return 'matches';
+        }
+
+        const normalized = String(tabName).replace(/^#?tab-?/, '').trim();
+        return normalized || 'matches';
+    }
 
     function activateTab(tabName) {
+        const activeTab = getTabName(tabName);
+
         buttons.forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tab === tabName);
+            btn.classList.toggle('active', btn.dataset.tab === activeTab);
         });
 
         sections.forEach(section => {
-            section.classList.toggle('active', section.id === 'tab-' + tabName);
+            section.classList.toggle('active', section.id === 'tab-' + activeTab);
         });
+
+        sessionStorage.setItem(adminTabStorageKey, activeTab);
+        if (window.location.hash !== '#tab-' + activeTab) {
+            history.replaceState(null, '', '#tab-' + activeTab);
+        }
     }
 
     buttons.forEach(btn => {
@@ -1501,6 +1518,9 @@ document.addEventListener('DOMContentLoaded', function () {
             activateTab(this.dataset.tab);
         });
     });
+
+    const initialTab = getTabName(window.location.hash || sessionStorage.getItem(adminTabStorageKey) || 'matches');
+    activateTab(initialTab);
 
     function syncPlayerSelect(selectEl) {
         const form = selectEl.closest('form');
